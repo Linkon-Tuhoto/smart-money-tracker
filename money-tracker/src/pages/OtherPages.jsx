@@ -444,85 +444,503 @@ function Activity() {
 
 
 function Budgets() {
-  const budgets = [
-    { name: "Food & groceries", spent: 4500, limit: 6000, color: "#5B4BEE" },
-    { name: "Transport", spent: 2200, limit: 3000, color: "#4D8DFA" },
-    { name: "Shopping", spent: 1800, limit: 2000, color: "#F47770" },
-    { name: "Farm supplies", spent: 1200, limit: 5000, color: "#16A6A1" },
-  ];
+  const [budgets, setBudgets] = React.useState([
+    { id: 1, name: "Food & groceries", spent: 4500, limit: 6000, color: "#5B4BEE" },
+    { id: 2, name: "Transport", spent: 2200, limit: 3000, color: "#4D8DFA" },
+    { id: 3, name: "Shopping", spent: 1800, limit: 2000, color: "#F47770" },
+    { id: 4, name: "Farm supplies", spent: 1200, limit: 5000, color: "#16A6A1" },
+  ]);
+
+  const [showForm, setShowForm] = React.useState(false);
+  const [budgetName, setBudgetName] = React.useState("Food & groceries");
+  const [customName, setCustomName] = React.useState("");
+  const [budgetLimit, setBudgetLimit] = React.useState("");
+  const [period, setPeriod] = React.useState("Monthly");
+  const [message, setMessage] = React.useState("");
+
+  const [goals, setGoals] = React.useState([
+    { id: 1, name: "Emergency fund", target: 20000, saved: 8000 },
+    { id: 2, name: "Farm investment", target: 50000, saved: 12500 },
+  ]);
+
+  const [showGoalForm, setShowGoalForm] = React.useState(false);
+  const [goalName, setGoalName] = React.useState("");
+  const [goalTarget, setGoalTarget] = React.useState("");
+
+  const money = (amount) =>
+    new Intl.NumberFormat("en-KE", {
+      style: "currency",
+      currency: "KES",
+      maximumFractionDigits: 0,
+    }).format(amount);
+
+  const totalLimit = budgets.reduce(
+    (sum, budget) => sum + budget.limit,
+    0
+  );
+
+  const totalSpent = budgets.reduce(
+    (sum, budget) => sum + budget.spent,
+    0
+  );
+
+  const totalRemaining = totalLimit - totalSpent;
+
+  function createBudget(event) {
+    event.preventDefault();
+
+    const name =
+      budgetName === "Other" ? customName.trim() : budgetName;
+
+    const limit = Number(budgetLimit);
+
+    if (!name || !Number.isFinite(limit) || limit <= 0) {
+      setMessage("Enter a category and a valid budget amount.");
+      return;
+    }
+
+    if (
+      budgets.some(
+        (budget) => budget.name.toLowerCase() === name.toLowerCase()
+      )
+    ) {
+      setMessage("A budget with that category already exists.");
+      return;
+    }
+
+    const colors = ["#5B4BEE", "#4D8DFA", "#F47770", "#16A6A1"];
+
+    setBudgets((previous) => [
+      ...previous,
+      {
+        id: Date.now(),
+        name,
+        spent: 0,
+        limit,
+        color: colors[previous.length % colors.length],
+      },
+    ]);
+
+    setBudgetLimit("");
+    setCustomName("");
+    setBudgetName("Food & groceries");
+    setMessage(`${name} budget created successfully.`);
+    setShowForm(false);
+  }
+
+  function createGoal(event) {
+    event.preventDefault();
+
+    const target = Number(goalTarget);
+
+    if (!goalName.trim() || !Number.isFinite(target) || target <= 0) {
+      return;
+    }
+
+    setGoals((previous) => [
+      ...previous,
+      {
+        id: Date.now(),
+        name: goalName.trim(),
+        target,
+        saved: 0,
+      },
+    ]);
+
+    setGoalName("");
+    setGoalTarget("");
+    setShowGoalForm(false);
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <PageHeader
         eyebrow="PLAN WITH PURPOSE"
-        title="Budgets"
-        description="Set spending limits and keep your priorities in view."
+        title="Budgets & savings"
+        description="Give every shilling a purpose and work towards your financial goals."
       />
 
-      <div className="rounded-3xl bg-gradient-to-br from-[#5B4BEE] to-[#30266F] p-6 text-white">
-        <p className="text-sm text-violet-100">Total planned budget</p>
-        <p className="mt-2 text-3xl font-extrabold">{money(16000)}</p>
-        <div className="mt-5 flex items-center justify-between text-sm">
-          <span className="text-violet-100">Sample spending</span>
-          <span className="font-bold">{money(9700)}</span>
-        </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/20">
-          <div className="h-full w-[61%] rounded-full bg-white" />
-        </div>
-      </div>
+      {/* Budget overview */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#5B4BEE] to-[#30266F] p-6 text-white shadow-lg shadow-violet-200/50 sm:p-8">
+        <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full border-[28px] border-white/5" />
 
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-extrabold">Your budgets</h2>
-        <button className="inline-flex items-center gap-2 rounded-xl bg-[#5B4BEE] px-4 py-3 text-sm font-bold text-white">
-          <Plus size={18} /> Create budget
-        </button>
-      </div>
+        <div className="relative">
+          <div className="flex items-center gap-2 text-sm font-medium text-violet-100">
+            <ChartNoAxesCombined size={19} />
+            Total budget allocation
+          </div>
 
-      <div className="space-y-4">
-        {budgets.map((budget) => {
-          const percentage = Math.min(
-            100,
-            Math.round((budget.spent / budget.limit) * 100)
-          );
+          <p className="mt-3 text-3xl font-extrabold sm:text-4xl">
+            {money(totalLimit)}
+          </p>
 
-          return (
-            <div
-              key={budget.name}
-              className="rounded-2xl border border-[#E5E6F0] bg-white p-5"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-bold">{budget.name}</h3>
-                  <p className="mt-1 text-sm text-[#666A85]">
-                    {money(budget.spent)} of {money(budget.limit)}
-                  </p>
-                </div>
-                <span className="text-sm font-extrabold">{percentage}%</span>
-              </div>
-              <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-[#F0F0F7]">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${percentage}%`, backgroundColor: budget.color }}
-                />
-              </div>
-              <p className="mt-3 text-xs text-[#666A85]">
-                {money(Math.max(0, budget.limit - budget.spent))} remaining
+          <div className="mt-6 grid grid-cols-2 gap-4">
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+              <p className="text-sm text-violet-100">Spent so far</p>
+              <p className="mt-2 text-lg font-extrabold">
+                {money(totalSpent)}
               </p>
             </div>
-          );
-        })}
-      </div>
 
-      <div className="rounded-2xl bg-[#FFF0E5] p-5">
-        <Target size={24} className="text-orange-600" />
-        <h3 className="mt-3 font-extrabold">Savings goals</h3>
-        <p className="mt-1 text-sm leading-6 text-[#7C3D16]">
-          We can add savings targets, deadlines and progress tracking next.
-        </p>
-      </div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+              <p className="text-sm text-violet-100">Remaining</p>
+              <p className="mt-2 text-lg font-extrabold">
+                {money(totalRemaining)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 flex items-center justify-between text-sm">
+            <span className="text-violet-100">Overall budget used</span>
+            <span className="font-bold">
+              {totalLimit > 0
+                ? Math.round((totalSpent / totalLimit) * 100)
+                : 0}%
+            </span>
+          </div>
+
+          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/20">
+            <div
+              className="h-full rounded-full bg-white transition-all"
+              style={{
+                width: `${
+                  totalLimit > 0
+                    ? Math.min(100, (totalSpent / totalLimit) * 100)
+                    : 0
+                }%`,
+              }}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Budget list heading */}
+      <section>
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-xl font-extrabold">Your budgets</h2>
+            <p className="mt-1 text-sm text-[#666A85]">
+              Monitor spending by category.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowForm((previous) => !previous);
+              setMessage("");
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B4BEE] px-5 py-3 font-bold text-white transition hover:bg-[#4939C7]"
+          >
+            <Plus size={19} />
+            Create budget
+          </button>
+        </div>
+
+        {/* Create budget form */}
+        {showForm && (
+          <form
+            onSubmit={createBudget}
+            className="mt-5 space-y-4 rounded-3xl border border-[#E5E6F0] bg-white p-5 sm:p-6"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-lg font-extrabold">
+                Set up a budget
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="text-sm font-bold text-[#666A85]"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <label className="block text-sm font-semibold">
+              Category
+              <select
+                value={budgetName}
+                onChange={(event) => setBudgetName(event.target.value)}
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] bg-white p-3 outline-none focus:border-[#5B4BEE]"
+              >
+                <option>Food & groceries</option>
+                <option>Transport</option>
+                <option>Shopping</option>
+                <option>Farm supplies</option>
+                <option>Entertainment</option>
+                <option>Bills</option>
+                <option>Other</option>
+              </select>
+            </label>
+
+            {budgetName === "Other" && (
+              <label className="block text-sm font-semibold">
+                Custom category name
+                <input
+                  required
+                  value={customName}
+                  onChange={(event) => setCustomName(event.target.value)}
+                  placeholder="e.g. School fees"
+                  className="mt-2 w-full rounded-xl border border-[#E5E6F0] p-3 outline-none focus:border-[#5B4BEE]"
+                />
+              </label>
+            )}
+
+            <label className="block text-sm font-semibold">
+              Budget limit (KSh)
+              <input
+                required
+                type="number"
+                min="1"
+                step="1"
+                value={budgetLimit}
+                onChange={(event) => setBudgetLimit(event.target.value)}
+                placeholder="e.g. 5000"
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] p-3 outline-none focus:border-[#5B4BEE]"
+              />
+            </label>
+
+            <label className="block text-sm font-semibold">
+              Budget period
+              <select
+                value={period}
+                onChange={(event) => setPeriod(event.target.value)}
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] bg-white p-3 outline-none focus:border-[#5B4BEE]"
+              >
+                <option>Weekly</option>
+                <option>Monthly</option>
+                <option>Yearly</option>
+              </select>
+            </label>
+
+            <p className="text-xs leading-5 text-[#666A85]">
+              Selected period: {period}. Periods are currently for display
+              only; automatic period resets will be added later.
+            </p>
+
+            {message && (
+              <p role="status" className="text-sm font-semibold text-[#5B4BEE]">
+                {message}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-[#5B4BEE] px-5 py-3 font-bold text-white hover:bg-[#4939C7]"
+            >
+              Save budget
+            </button>
+          </form>
+        )}
+
+        {message && !showForm && (
+          <p role="status" className="mt-3 text-sm font-semibold text-[#5B4BEE]">
+            {message}
+          </p>
+        )}
+
+        {/* Individual budget cards */}
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          {budgets.map((budget) => {
+            const percentage = Math.round(
+              (budget.spent / budget.limit) * 100
+            );
+
+            const exceeded = budget.spent > budget.limit;
+            const nearLimit = percentage >= 80 && !exceeded;
+
+            return (
+              <article
+                key={budget.id}
+                className="rounded-2xl border border-[#E5E6F0] bg-white p-5 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="h-11 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: budget.color }}
+                    />
+                    <div>
+                      <h3 className="font-extrabold">{budget.name}</h3>
+                      <p className="mt-1 text-sm text-[#666A85]">
+                        {money(budget.spent)} spent of {money(budget.limit)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="text-lg font-extrabold">
+                    {percentage}%
+                  </span>
+                </div>
+
+                <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-[#F0F0F7]">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(100, percentage)}%`,
+                      backgroundColor: exceeded
+                        ? "#F47770"
+                        : nearLimit
+                        ? "#E9A23B"
+                        : budget.color,
+                    }}
+                  />
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  <p
+                    className={`text-sm font-semibold ${
+                      exceeded
+                        ? "text-red-600"
+                        : nearLimit
+                        ? "text-amber-700"
+                        : "text-[#666A85]"
+                    }`}
+                  >
+                    {exceeded
+                      ? `${money(budget.spent - budget.limit)} over budget`
+                      : nearLimit
+                      ? "Approaching budget limit"
+                      : `${money(budget.limit - budget.spent)} remaining`}
+                  </p>
+
+                  {(nearLimit || exceeded) && (
+                    <span className="rounded-lg bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">
+                      {exceeded ? "Limit exceeded" : "Watch spending"}
+                    </span>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Savings goals */}
+      <section>
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-xl font-extrabold">Savings goals</h2>
+            <p className="mt-1 text-sm text-[#666A85]">
+              Small steps towards bigger plans.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowGoalForm((previous) => !previous)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#E5E6F0] bg-white px-4 py-3 text-sm font-bold text-[#30266F] hover:bg-[#EEEAFE]"
+          >
+            <Plus size={18} />
+            New savings goal
+          </button>
+        </div>
+
+        {showGoalForm && (
+          <form
+            onSubmit={createGoal}
+            className="mt-4 grid gap-4 rounded-2xl border border-[#E5E6F0] bg-white p-5 sm:grid-cols-2"
+          >
+            <label className="text-sm font-semibold">
+              Goal name
+              <input
+                required
+                value={goalName}
+                onChange={(event) => setGoalName(event.target.value)}
+                placeholder="e.g. Buy a sheep"
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] p-3 outline-none focus:border-[#5B4BEE]"
+              />
+            </label>
+
+            <label className="text-sm font-semibold">
+              Target amount (KSh)
+              <input
+                required
+                type="number"
+                min="1"
+                step="1"
+                value={goalTarget}
+                onChange={(event) => setGoalTarget(event.target.value)}
+                placeholder="e.g. 15000"
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] p-3 outline-none focus:border-[#5B4BEE]"
+              />
+            </label>
+
+            <button
+              type="submit"
+              className="rounded-xl bg-[#5B4BEE] px-5 py-3 font-bold text-white sm:col-span-2"
+            >
+              Create savings goal
+            </button>
+          </form>
+        )}
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          {goals.map((goal) => {
+            const percentage = Math.round(
+              (goal.saved / goal.target) * 100
+            );
+
+            return (
+              <article
+                key={goal.id}
+                className="rounded-2xl border border-[#E5E6F0] bg-white p-5"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEEAFE] text-[#5B4BEE]">
+                    <PiggyBank size={24} />
+                  </span>
+                  <div className="flex-1">
+                    <h3 className="font-extrabold">{goal.name}</h3>
+                    <p className="mt-1 text-sm text-[#666A85]">
+                      {money(goal.saved)} saved
+                    </p>
+                  </div>
+                  <span className="text-sm font-extrabold text-[#5B4BEE]">
+                    {percentage}%
+                  </span>
+                </div>
+
+                <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-[#F0F0F7]">
+                  <div
+                    className="h-full rounded-full bg-[#5B4BEE]"
+                    style={{ width: `${Math.min(100, percentage)}%` }}
+                  />
+                </div>
+
+                <div className="mt-3 flex justify-between gap-3 text-sm">
+                  <span className="text-[#666A85]">
+                    Target: {money(goal.target)}
+                  </span>
+                  <span className="font-bold">
+                    {money(Math.max(0, goal.target - goal.saved))} to go
+                  </span>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-blue-100 bg-[#EAF3FF] p-5">
+        <div className="flex items-start gap-3">
+          <Target className="mt-0.5 shrink-0 text-blue-600" size={23} />
+          <div>
+            <h3 className="font-extrabold text-blue-950">
+              Your plan, your pace
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-blue-900">
+              Budget alerts and savings progress currently use sample data.
+              Later, we'll calculate them from your actual reviewed
+              transactions and account balances.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
+
 
 function Coach() {
   const [question, setQuestion] = React.useState("");
