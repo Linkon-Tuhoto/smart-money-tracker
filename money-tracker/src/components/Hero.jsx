@@ -1,11 +1,6 @@
 
 import { useState } from "react";
 import {
-  Home,
-  ArrowLeftRight,
-  ChartNoAxesCombined,
-  MessageCircle,
-  LayoutGrid,
   Bell,
   Eye,
   EyeOff,
@@ -71,14 +66,6 @@ const transactions = [
   },
 ];
 
-const navigation = [
-  { label: "Home", icon: Home },
-  { label: "Activity", icon: ArrowLeftRight },
-  { label: "Budgets", icon: ChartNoAxesCombined },
-  { label: "Coach", icon: MessageCircle },
-  { label: "More", icon: LayoutGrid },
-];
-
 const formatMoney = (amount) =>
   new Intl.NumberFormat("en-KE", {
     style: "currency",
@@ -86,8 +73,7 @@ const formatMoney = (amount) =>
     maximumFractionDigits: 0,
   }).format(amount);
 
-function Hero() {
-  const [activeTab, setActiveTab] = useState("Home");
+function Hero({ onNavigate }) {
   const [showBalance, setShowBalance] = useState(true);
 
   const totalSpending = spendingData.reduce(
@@ -96,7 +82,7 @@ function Hero() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F7F7FC] pb-24 text-[#191A35]">
+    <div className="min-h-screen bg-[#F7F7FC] pb-6 text-[#191A35]">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-[#E5E6F0] bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
@@ -117,6 +103,7 @@ function Hero() {
 
           <div className="flex items-center gap-3">
             <button
+              type="button"
               aria-label="Notifications"
               className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[#E5E6F0] bg-white transition hover:bg-[#F7F7FC]"
             >
@@ -125,6 +112,7 @@ function Hero() {
             </button>
 
             <button
+              type="button"
               aria-label="Open menu"
               className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEEAFE] text-[#5B4BEE] md:hidden"
             >
@@ -143,17 +131,23 @@ function Hero() {
         <section className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <p className="text-sm font-semibold text-[#666A85]">
-              Saturday, October 17, 2026
+              Your financial overview
             </p>
+
             <h2 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
               Welcome back! 👋
             </h2>
+
             <p className="mt-1 text-sm text-[#666A85] sm:text-base">
               Let's make every shilling count.
             </p>
           </div>
 
-          <button className="inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-[#30266F] shadow-sm ring-1 ring-[#E5E6F0] transition hover:bg-[#EEEAFE]">
+          <button
+            type="button"
+            onClick={() => onNavigate("More")}
+            className="inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-[#30266F] shadow-sm ring-1 ring-[#E5E6F0] transition hover:bg-[#EEEAFE]"
+          >
             <Wallet size={18} />
             All accounts
             <ChevronRight size={16} />
@@ -173,7 +167,8 @@ function Hero() {
                 </p>
 
                 <button
-                  onClick={() => setShowBalance(!showBalance)}
+                  type="button"
+                  onClick={() => setShowBalance((previous) => !previous)}
                   aria-label={showBalance ? "Hide balance" : "Show balance"}
                   className="rounded-xl bg-white/10 p-2 transition hover:bg-white/20"
                 >
@@ -201,10 +196,14 @@ function Hero() {
                     </span>
                     Income
                   </div>
+
                   <p className="mt-3 text-lg font-bold sm:text-xl">
                     {showBalance ? formatMoney(18500) : "••••••"}
                   </p>
-                  <p className="mt-1 text-xs text-violet-100">This month</p>
+
+                  <p className="mt-1 text-xs text-violet-100">
+                    This month
+                  </p>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
@@ -214,10 +213,14 @@ function Hero() {
                     </span>
                     Expenses
                   </div>
+
                   <p className="mt-3 text-lg font-bold sm:text-xl">
                     {showBalance ? formatMoney(9700) : "••••••"}
                   </p>
-                  <p className="mt-1 text-xs text-violet-100">This month</p>
+
+                  <p className="mt-1 text-xs text-violet-100">
+                    This month
+                  </p>
                 </div>
               </div>
             </div>
@@ -233,7 +236,11 @@ function Hero() {
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <button className="flex min-h-28 flex-col items-start justify-between rounded-2xl bg-[#EEEAFE] p-4 text-left transition hover:bg-[#e2dcff]">
+              <button
+                type="button"
+                onClick={() => onNavigate("Activity")}
+                className="flex min-h-28 flex-col items-start justify-between rounded-2xl bg-[#EEEAFE] p-4 text-left transition hover:bg-[#e2dcff]"
+              >
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#5B4BEE] shadow-sm">
                   <Plus size={21} />
                 </span>
@@ -242,7 +249,11 @@ function Hero() {
                 </span>
               </button>
 
-              <button className="flex min-h-28 flex-col items-start justify-between rounded-2xl bg-[#FFF0E5] p-4 text-left transition hover:bg-[#ffe5d2]">
+              <button
+                type="button"
+                onClick={() => onNavigate("Activity")}
+                className="flex min-h-28 flex-col items-start justify-between rounded-2xl bg-[#FFF0E5] p-4 text-left transition hover:bg-[#ffe5d2]"
+              >
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-orange-600 shadow-sm">
                   <ArrowUpRight size={21} />
                 </span>
@@ -251,7 +262,11 @@ function Hero() {
                 </span>
               </button>
 
-              <button className="flex min-h-28 flex-col items-start justify-between rounded-2xl bg-[#EAF3FF] p-4 text-left transition hover:bg-[#dceaff]">
+              <button
+                type="button"
+                onClick={() => onNavigate("More")}
+                className="flex min-h-28 flex-col items-start justify-between rounded-2xl bg-[#EAF3FF] p-4 text-left transition hover:bg-[#dceaff]"
+              >
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
                   <Smartphone size={21} />
                 </span>
@@ -260,7 +275,11 @@ function Hero() {
                 </span>
               </button>
 
-              <button className="flex min-h-28 flex-col items-start justify-between rounded-2xl bg-[#E5F7F3] p-4 text-left transition hover:bg-[#d5f0e9]">
+              <button
+                type="button"
+                onClick={() => onNavigate("Budgets")}
+                className="flex min-h-28 flex-col items-start justify-between rounded-2xl bg-[#E5F7F3] p-4 text-left transition hover:bg-[#d5f0e9]"
+              >
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-teal-700 shadow-sm">
                   <PiggyBank size={21} />
                 </span>
@@ -272,12 +291,14 @@ function Hero() {
           </div>
         </section>
 
-        {/* Spending chart and insight */}
+        {/* Spending overview */}
         <section className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-3xl border border-[#E5E6F0] bg-white p-5 shadow-sm sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="text-lg font-extrabold">Spending overview</h3>
+                <h3 className="text-lg font-extrabold">
+                  Spending overview
+                </h3>
                 <p className="mt-1 text-sm text-[#666A85]">
                   See where your money goes.
                 </p>
@@ -307,6 +328,7 @@ function Hero() {
                         <Cell key={item.name} fill={item.color} />
                       ))}
                     </Pie>
+
                     <Tooltip
                       formatter={(value) => formatMoney(Number(value))}
                     />
@@ -325,11 +347,15 @@ function Hero() {
 
               <div className="space-y-4">
                 {spendingData.map((item) => (
-                  <div key={item.name} className="flex items-center gap-3">
+                  <div
+                    key={item.name}
+                    className="flex items-center gap-3"
+                  >
                     <span
                       className="h-3 w-3 shrink-0 rounded-full"
                       style={{ backgroundColor: item.color }}
                     />
+
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold">{item.name}</p>
                       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#F0F0F7]">
@@ -342,6 +368,7 @@ function Hero() {
                         />
                       </div>
                     </div>
+
                     <span className="text-sm font-bold">
                       {formatMoney(item.amount)}
                     </span>
@@ -374,7 +401,8 @@ function Hero() {
               </p>
 
               <button
-                onClick={() => setActiveTab("Coach")}
+                type="button"
+                onClick={() => onNavigate("Coach")}
                 className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#5B4BEE] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#4939C7]"
               >
                 Explore money coach
@@ -388,14 +416,17 @@ function Hero() {
         <section className="rounded-3xl border border-[#E5E6F0] bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-lg font-extrabold">Recent transactions</h3>
+              <h3 className="text-lg font-extrabold">
+                Recent transactions
+              </h3>
               <p className="mt-1 text-sm text-[#666A85]">
                 Keep track of every shilling.
               </p>
             </div>
 
             <button
-              onClick={() => setActiveTab("Activity")}
+              type="button"
+              onClick={() => onNavigate("Activity")}
               className="inline-flex items-center gap-1 text-sm font-bold text-[#5B4BEE] hover:text-[#30266F]"
             >
               View all
@@ -447,49 +478,23 @@ function Hero() {
 
         {/* Reminder */}
         <section className="flex items-start gap-3 rounded-2xl border border-blue-100 bg-[#EAF3FF] p-4">
-          <CircleHelp className="mt-0.5 shrink-0 text-blue-600" size={21} />
+          <CircleHelp
+            className="mt-0.5 shrink-0 text-blue-600"
+            size={21}
+          />
+
           <div>
             <p className="text-sm font-bold text-blue-950">
               Keep your records up to date
             </p>
             <p className="mt-1 text-sm leading-5 text-blue-900">
               After importing M-Pesa messages, review each transaction and
-              add what the money was used for. These sample reminders are
-              static for now.
+              add what the money was used for. These reminders are static
+              for now.
             </p>
           </div>
         </section>
       </main>
-
-      {/* Fixed bottom navigation */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E5E6F0] bg-white/95 backdrop-blur">
-        <div className="mx-auto grid max-w-xl grid-cols-5 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
-          {navigation.map(({ label, icon: Icon }) => {
-            const isActive = activeTab === label;
-
-            return (
-              <button
-                key={label}
-                onClick={() => setActiveTab(label)}
-                className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl transition ${
-                  isActive
-                    ? "font-extrabold text-[#5B4BEE]"
-                    : "font-medium text-[#777A94] hover:bg-[#F7F7FC]"
-                }`}
-              >
-                <span
-                  className={`flex h-8 w-12 items-center justify-center rounded-xl transition ${
-                    isActive ? "bg-[#EEEAFE]" : ""
-                  }`}
-                >
-                  <Icon size={21} strokeWidth={isActive ? 2.5 : 2} />
-                </span>
-                <span className="text-[11px] sm:text-xs">{label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
     </div>
   );
 }
