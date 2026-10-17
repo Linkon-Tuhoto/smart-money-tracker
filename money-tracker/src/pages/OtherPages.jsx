@@ -1,18 +1,25 @@
 import {
-  Search,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Smartphone,
-  Plus,
-  ChevronRight,
-  PiggyBank,
-  Target,
-  Sparkles,
   Wallet,
+  Smartphone,
+  Building2,
+  Plus,
+  ArrowLeft,
   ArrowLeftRight,
-  FileText,
-  Settings,
   Upload,
+  FileText,
+  PiggyBank,
+  Settings,
+  ShieldCheck,
+  Eye,
+  Bell,
+  Download,
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  ChevronRight,
+  TrendingUp,
+  TrendingDown,
+  CircleHelp,
 } from "lucide-react";
 import React from "react";
 
@@ -1236,44 +1243,709 @@ function Coach() {
 
 
 function More() {
+  const [section, setSection] = React.useState("menu");
+
+  const [accounts, setAccounts] = React.useState([
+    { name: "M-Pesa", type: "Mobile money", balance: 18450 },
+    { name: "Cash", type: "Cash wallet", balance: 3000 },
+    { name: "Bank account", type: "Bank", balance: 7000 },
+  ]);
+
+  const [accountName, setAccountName] = React.useState("");
+  const [accountType, setAccountType] = React.useState("Cash");
+  const [showAccountForm, setShowAccountForm] = React.useState(false);
+
+  const [messages, setMessages] = React.useState("");
+  const [importCount, setImportCount] = React.useState(null);
+
+  const [transfer, setTransfer] = React.useState({
+    amount: "",
+    from: "M-Pesa",
+    to: "Cash",
+    purpose: "",
+  });
+  const [transferMessage, setTransferMessage] = React.useState("");
+
+  const [notifications, setNotifications] = React.useState(true);
+  const [privacy, setPrivacy] = React.useState(true);
+  const [currency, setCurrency] = React.useState("KSh");
+
+  const money = (amount) =>
+    `${currency} ${Number(amount).toLocaleString("en-KE")}`;
+
+  const totalBalance = accounts.reduce(
+    (total, account) => total + account.balance,
+    0
+  );
+
   const options = [
-    { title: "My accounts", detail: "M-Pesa, cash and bank accounts", icon: Wallet },
-    { title: "Import M-Pesa messages", detail: "Import and review transaction messages", icon: Upload },
-    { title: "Transfers & withdrawals", detail: "Track movement between accounts", icon: ArrowLeftRight },
-    { title: "Reports", detail: "Review income and spending history", icon: FileText },
-    { title: "Savings goals", detail: "Track what you're working towards", icon: PiggyBank },
-    { title: "Settings", detail: "Preferences and privacy controls", icon: Settings },
+    {
+      title: "My accounts",
+      detail: "View your money across different accounts",
+      icon: Wallet,
+      color: "bg-[#EEEAFE] text-[#5B4BEE]",
+      section: "accounts",
+    },
+    {
+      title: "Import M-Pesa messages",
+      detail: "Paste messages and prepare them for review",
+      icon: Smartphone,
+      color: "bg-[#EAF3FF] text-[#4D8DFA]",
+      section: "import",
+    },
+    {
+      title: "Transfers & withdrawals",
+      detail: "Record money moving between accounts",
+      icon: ArrowLeftRight,
+      color: "bg-[#FFF0E5] text-[#D97735]",
+      section: "transfers",
+    },
+    {
+      title: "Reports",
+      detail: "Understand your income and spending",
+      icon: FileText,
+      color: "bg-[#E0F7F3] text-[#16A6A1]",
+      section: "reports",
+    },
+    {
+      title: "Savings goals",
+      detail: "See what you are saving towards",
+      icon: PiggyBank,
+      color: "bg-[#FCE7F3] text-[#C02676]",
+      section: "goals",
+    },
+    {
+      title: "Settings & privacy",
+      detail: "Manage your preferences",
+      icon: Settings,
+      color: "bg-[#F0F0F6] text-[#666A85]",
+      section: "settings",
+    },
   ];
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="MORE TOOLS"
-        title="More"
-        description="Manage your accounts and other money-tracking tools."
-      />
+  const goBack = () => {
+    setSection("menu");
+    setTransferMessage("");
+  };
 
-      <div className="rounded-3xl border border-[#E5E6F0] bg-white p-3 sm:p-5">
-        {options.map(({ title, detail, icon: Icon }) => (
-          <button
-            key={title}
-            className="flex w-full items-center gap-4 rounded-2xl p-4 text-left transition hover:bg-[#F7F7FC]"
-          >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EEEAFE] text-[#5B4BEE]">
-              <Icon size={22} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-bold">{title}</span>
-              <span className="mt-1 block text-sm leading-5 text-[#666A85]">
-                {detail}
-              </span>
-            </span>
-            <ChevronRight size={19} className="shrink-0 text-[#8A8DA5]" />
-          </button>
-        ))}
+  const addAccount = (event) => {
+    event.preventDefault();
+
+    const name = accountName.trim();
+    if (!name) return;
+
+    const exists = accounts.some(
+      (account) => account.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (exists) {
+      alert("An account with that name already exists.");
+      return;
+    }
+
+    setAccounts((current) => [
+      ...current,
+      { name, type: accountType, balance: 0 },
+    ]);
+
+    setAccountName("");
+    setShowAccountForm(false);
+  };
+
+  const previewMessages = () => {
+    const lines = messages
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    setImportCount(lines.length);
+  };
+
+  const recordTransfer = (event) => {
+    event.preventDefault();
+
+    const amount = Number(transfer.amount);
+
+    if (!amount || amount <= 0) {
+      setTransferMessage("Enter a valid amount greater than zero.");
+      return;
+    }
+
+    if (transfer.from === transfer.to) {
+      setTransferMessage("Choose two different accounts.");
+      return;
+    }
+
+    const source = accounts.find((a) => a.name === transfer.from);
+    const destination = accounts.find((a) => a.name === transfer.to);
+
+    if (!source || !destination) {
+      setTransferMessage("Select two existing accounts.");
+      return;
+    }
+
+    if (source.balance < amount) {
+      setTransferMessage(
+        "The demo source account does not have enough balance."
+      );
+      return;
+    }
+
+    setAccounts((current) =>
+      current.map((account) => {
+        if (account.name === transfer.from) {
+          return { ...account, balance: account.balance - amount };
+        }
+
+        if (account.name === transfer.to) {
+          return { ...account, balance: account.balance + amount };
+        }
+
+        return account;
+      })
+    );
+
+    setTransferMessage(
+      `Demo transfer of ${money(amount)} recorded between ${transfer.from} and ${transfer.to}.`
+    );
+
+    setTransfer({
+      amount: "",
+      from: transfer.from,
+      to: transfer.to,
+      purpose: "",
+    });
+  };
+
+  const heading = {
+    accounts: "My accounts",
+    import: "Import M-Pesa messages",
+    transfers: "Transfers & withdrawals",
+    reports: "Reports",
+    goals: "Savings goals",
+    settings: "Settings & privacy",
+  };
+
+  const SectionHeader = ({ title }) => (
+    <div className="mb-6 flex items-center gap-3">
+      <button
+        onClick={goBack}
+        className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E5E6F0] bg-white text-[#30266F] hover:bg-[#F7F7FC]"
+        aria-label="Back to More menu"
+      >
+        <ArrowLeft size={20} />
+      </button>
+      <div>
+        <h2 className="text-xl font-extrabold text-[#191A35]">{title}</h2>
+        <p className="text-sm text-[#777A94]">Manage your money tracker</p>
       </div>
     </div>
   );
+
+  const SettingRow = ({ icon: Icon, title, detail, checked, onChange }) => (
+    <div className="flex items-center gap-3 py-4">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F7F7FC] text-[#5B4BEE]">
+        <Icon size={19} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-bold text-[#191A35]">{title}</p>
+        <p className="text-xs leading-5 text-[#777A94]">{detail}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+          checked ? "bg-[#5B4BEE]" : "bg-[#D5D6E2]"
+        }`}
+      >
+        <span
+          className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${
+            checked ? "left-6" : "left-1"
+          }`}
+        />
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="mx-auto w-full max-w-4xl pb-6">
+      {section === "menu" && (
+        <>
+          <div className="mb-7">
+            <p className="mb-1 text-sm font-semibold text-[#5B4BEE]">
+              YOUR MONEY, YOUR CONTROL
+            </p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-[#191A35]">
+              More
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-[#777A94]">
+              Manage accounts, import transactions, and customise your tracker.
+            </p>
+          </div>
+
+          <div className="mb-6 rounded-3xl bg-gradient-to-br from-[#30266F] to-[#5B4BEE] p-5 text-white shadow-sm sm:p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-white/75">Total across your accounts</p>
+                <h2 className="mt-2 text-3xl font-extrabold">
+                  {money(totalBalance)}
+                </h2>
+                <p className="mt-2 text-xs text-white/70">
+                  Demo balances · not connected to live accounts
+                </p>
+              </div>
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15">
+                <Wallet size={28} />
+              </div>
+            </div>
+            <button
+              onClick={() => setSection("accounts")}
+              className="mt-5 flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[#30266F] hover:bg-[#F3F0FF]"
+            >
+              View accounts <ChevronRight size={17} />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {options.map(({ title, detail, icon: Icon, color, section: target }) => (
+              <button
+                key={target}
+                onClick={() => setSection(target)}
+                className="flex w-full items-center gap-4 rounded-2xl border border-[#E5E6F0] bg-white p-4 text-left transition hover:border-[#C9C2FF] hover:shadow-sm sm:p-5"
+              >
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${color}`}>
+                  <Icon size={23} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-[#191A35]">{title}</h3>
+                  <p className="mt-1 text-sm leading-5 text-[#777A94]">{detail}</p>
+                </div>
+                <ChevronRight size={20} className="shrink-0 text-[#999BB0]" />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {section === "accounts" && (
+        <>
+          <SectionHeader title={heading.accounts} />
+
+          <div className="mb-5 rounded-2xl bg-[#EEEAFE] p-5">
+            <p className="text-sm font-medium text-[#666A85]">Combined demo balance</p>
+            <h3 className="mt-1 text-3xl font-extrabold text-[#30266F]">
+              {money(totalBalance)}
+            </h3>
+          </div>
+
+          <div className="space-y-3">
+            {accounts.map((account) => {
+              const Icon =
+                account.type === "Bank"
+                  ? Building2
+                  : account.type === "Mobile money"
+                    ? Smartphone
+                    : Wallet;
+
+              return (
+                <div
+                  key={account.name}
+                  className="flex items-center gap-3 rounded-2xl border border-[#E5E6F0] bg-white p-4"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F7F7FC] text-[#5B4BEE]">
+                    <Icon size={22} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-[#191A35]">{account.name}</p>
+                    <p className="text-sm text-[#777A94]">{account.type}</p>
+                  </div>
+                  <p className="font-extrabold text-[#191A35]">
+                    {money(account.balance)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => setShowAccountForm(!showAccountForm)}
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#5B4BEE] px-4 py-3 font-bold text-white hover:bg-[#4939DB]"
+          >
+            <Plus size={19} /> Add an account
+          </button>
+
+          {showAccountForm && (
+            <form
+              onSubmit={addAccount}
+              className="mt-4 space-y-4 rounded-2xl border border-[#E5E6F0] bg-white p-5"
+            >
+              <h3 className="font-bold text-[#191A35]">New account</h3>
+
+              <label className="block text-sm font-semibold text-[#555873]">
+                Account name
+                <input
+                  required
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  placeholder="e.g. Savings account"
+                  className="mt-2 w-full rounded-xl border border-[#E5E6F0] px-3 py-3 font-normal outline-none focus:border-[#5B4BEE]"
+                />
+              </label>
+
+              <label className="block text-sm font-semibold text-[#555873]">
+                Account type
+                <select
+                  value={accountType}
+                  onChange={(e) => setAccountType(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-[#E5E6F0] bg-white px-3 py-3 font-normal outline-none focus:border-[#5B4BEE]"
+                >
+                  <option>Cash</option>
+                  <option>Mobile money</option>
+                  <option>Bank</option>
+                  <option>Other</option>
+                </select>
+              </label>
+
+              <p className="text-xs leading-5 text-[#777A94]">
+                New accounts start at zero in this prototype. You can add the
+                opening balance feature later.
+              </p>
+
+              <button className="w-full rounded-xl bg-[#30266F] px-4 py-3 font-bold text-white">
+                Save account
+              </button>
+            </form>
+          )}
+        </>
+      )}
+
+      {section === "import" && (
+        <>
+          <SectionHeader title={heading.import} />
+
+          <div className="mb-5 rounded-2xl border border-[#C9E7FF] bg-[#EAF3FF] p-4">
+            <div className="flex gap-3">
+              <Smartphone size={22} className="shrink-0 text-[#4D8DFA]" />
+              <div>
+                <h3 className="font-bold text-[#191A35]">Import transaction messages</h3>
+                <p className="mt-1 text-sm leading-6 text-[#666A85]">
+                  Copy messages from your phone and paste them below, one
+                  message per line. You will be able to review extracted
+                  transactions before saving them when the importer is built.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <label className="block text-sm font-bold text-[#191A35]">
+            Paste messages
+            <textarea
+              value={messages}
+              onChange={(e) => {
+                setMessages(e.target.value);
+                setImportCount(null);
+              }}
+              rows={8}
+              placeholder={"Example:\nPaste an M-Pesa transaction message here...\nPaste another message on the next line..."}
+              className="mt-2 w-full resize-y rounded-2xl border border-[#E5E6F0] bg-white p-4 text-sm leading-6 outline-none focus:border-[#5B4BEE]"
+            />
+          </label>
+
+          <button
+            onClick={previewMessages}
+            disabled={!messages.trim()}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#5B4BEE] px-4 py-3 font-bold text-white hover:bg-[#4939DB] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Upload size={19} /> Count messages for review
+          </button>
+
+          {importCount !== null && (
+            <div className="mt-4 rounded-2xl border border-[#BDE9DD] bg-[#E0F7F3] p-4">
+              <div className="flex items-center gap-2 font-bold text-[#126E68]">
+                <CheckCircle2 size={20} />
+                {importCount} message{importCount === 1 ? "" : "s"} found
+              </div>
+              <p className="mt-2 text-sm leading-6 text-[#356D69]">
+                This is only a line count. The demo has not extracted,
+                authenticated, or saved any transactions yet.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-5 rounded-2xl border border-[#F2D7B9] bg-[#FFF0E5] p-4">
+            <div className="flex gap-2">
+              <ShieldCheck size={21} className="shrink-0 text-[#C46B2B]" />
+              <p className="text-sm leading-6 text-[#80512E]">
+                Never paste your M-Pesa PIN, password, or other login
+                credentials. Imported message text alone cannot prove that a
+                transaction is genuine.
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+
+      {section === "transfers" && (
+        <>
+          <SectionHeader title={heading.transfers} />
+
+          <div className="mb-5 rounded-2xl bg-[#EEEAFE] p-4">
+            <h3 className="font-bold text-[#30266F]">Move money between accounts</h3>
+            <p className="mt-1 text-sm leading-6 text-[#666A85]">
+              An internal transfer changes account balances but is not income
+              or spending.
+            </p>
+          </div>
+
+          <form
+            onSubmit={recordTransfer}
+            className="space-y-4 rounded-2xl border border-[#E5E6F0] bg-white p-5"
+          >
+            <label className="block text-sm font-semibold text-[#555873]">
+              Amount ({currency})
+              <input
+                required
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={transfer.amount}
+                onChange={(e) =>
+                  setTransfer({ ...transfer, amount: e.target.value })
+                }
+                placeholder="e.g. 500"
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] px-3 py-3 outline-none focus:border-[#5B4BEE]"
+              />
+            </label>
+
+            <label className="block text-sm font-semibold text-[#555873]">
+              From account
+              <select
+                value={transfer.from}
+                onChange={(e) =>
+                  setTransfer({ ...transfer, from: e.target.value })
+                }
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] bg-white px-3 py-3 outline-none focus:border-[#5B4BEE]"
+              >
+                {accounts.map((account) => (
+                  <option key={account.name} value={account.name}>
+                    {account.name} — {money(account.balance)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm font-semibold text-[#555873]">
+              To account
+              <select
+                value={transfer.to}
+                onChange={(e) =>
+                  setTransfer({ ...transfer, to: e.target.value })
+                }
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] bg-white px-3 py-3 outline-none focus:border-[#5B4BEE]"
+              >
+                {accounts.map((account) => (
+                  <option key={account.name} value={account.name}>
+                    {account.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm font-semibold text-[#555873]">
+              Note (optional)
+              <input
+                value={transfer.purpose}
+                onChange={(e) =>
+                  setTransfer({ ...transfer, purpose: e.target.value })
+                }
+                placeholder="e.g. Cash for transport"
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] px-3 py-3 font-normal outline-none focus:border-[#5B4BEE]"
+              />
+            </label>
+
+            <button className="w-full rounded-xl bg-[#5B4BEE] px-4 py-3 font-bold text-white hover:bg-[#4939DB]">
+              Record demo transfer
+            </button>
+          </form>
+
+          {transferMessage && (
+            <p className="mt-4 rounded-xl bg-white p-4 text-sm leading-6 text-[#555873]">
+              {transferMessage}
+            </p>
+          )}
+
+          <p className="mt-4 text-xs leading-5 text-[#777A94]">
+            This prototype updates the balances shown on this screen only.
+            It does not save a transaction record or persist changes after refresh.
+          </p>
+        </>
+      )}
+
+      {section === "reports" && (
+        <>
+          <SectionHeader title={heading.reports} />
+
+          <div className="mb-5 rounded-2xl border border-[#E5E6F0] bg-white p-5">
+            <p className="text-sm text-[#777A94]">Sample monthly overview</p>
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div className="rounded-xl bg-[#E0F7F3] p-4">
+                <TrendingUp size={21} className="text-[#16A6A1]" />
+                <p className="mt-3 text-xs text-[#477B76]">Income</p>
+                <p className="mt-1 text-xl font-extrabold text-[#126E68]">
+                  {money(18500)}
+                </p>
+              </div>
+              <div className="rounded-xl bg-[#FFF0E5] p-4">
+                <TrendingDown size={21} className="text-[#D97735]" />
+                <p className="mt-3 text-xs text-[#966344]">Expenses</p>
+                <p className="mt-1 text-xl font-extrabold text-[#A75224]">
+                  {money(9700)}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-xl bg-[#F7F7FC] p-4">
+              <p className="text-sm text-[#777A94]">Difference</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#30266F]">
+                {money(18500 - 9700)}
+              </p>
+              <p className="mt-1 text-xs text-[#777A94]">
+                Sample figures, not calculated from your activity.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#E5E6F0] bg-white p-5">
+            <h3 className="font-bold text-[#191A35]">Future reports</h3>
+            <ul className="mt-3 space-y-3 text-sm text-[#666A85]">
+              <li>• Spending by category</li>
+              <li>• Weekly and monthly comparisons</li>
+              <li>• Account balances over time</li>
+              <li>• Downloadable transaction reports</li>
+            </ul>
+          </div>
+        </>
+      )}
+
+      {section === "goals" && (
+        <>
+          <SectionHeader title={heading.goals} />
+
+          <div className="mb-5 rounded-2xl bg-[#EEEAFE] p-5">
+            <PiggyBank size={28} className="text-[#5B4BEE]" />
+            <h3 className="mt-3 text-xl font-extrabold text-[#30266F]">
+              Build towards your goals
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-[#666A85]">
+              Track how much you have saved and what remains to reach each target.
+            </p>
+          </div>
+
+          {[
+            { name: "Emergency fund", saved: 8000, target: 20000 },
+            { name: "Farm investment", saved: 12500, target: 50000 },
+          ].map((goal) => {
+            const progress = Math.min(
+              100,
+              Math.round((goal.saved / goal.target) * 100)
+            );
+
+            return (
+              <div
+                key={goal.name}
+                className="mb-3 rounded-2xl border border-[#E5E6F0] bg-white p-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-bold text-[#191A35]">{goal.name}</h3>
+                  <span className="text-sm font-extrabold text-[#5B4BEE]">
+                    {progress}%
+                  </span>
+                </div>
+                <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#EEEAFE]">
+                  <div
+                    className="h-full rounded-full bg-[#5B4BEE]"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <div className="mt-3 flex justify-between gap-3 text-sm">
+                  <span className="font-bold text-[#191A35]">
+                    {money(goal.saved)}
+                  </span>
+                  <span className="text-[#777A94]">
+                    of {money(goal.target)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+
+          <p className="mt-4 text-xs leading-5 text-[#777A94]">
+            These are demo goals. Your Budgets tab remains the place to manage
+            savings goals in this prototype.
+          </p>
+        </>
+      )}
+
+      {section === "settings" && (
+        <>
+          <SectionHeader title={heading.settings} />
+
+          <div className="mb-5 rounded-2xl border border-[#E5E6F0] bg-white px-4">
+            <SettingRow
+              icon={Bell}
+              title="Reminders"
+              detail="Allow spending and transaction reminders"
+              checked={notifications}
+              onChange={setNotifications}
+            />
+            <div className="border-t border-[#E5E6F0]" />
+            <SettingRow
+              icon={Eye}
+              title="Privacy-first display"
+              detail="Prefer hiding sensitive amounts in the interface"
+              checked={privacy}
+              onChange={setPrivacy}
+            />
+          </div>
+
+          <div className="mb-5 rounded-2xl border border-[#E5E6F0] bg-white p-5">
+            <label className="block text-sm font-bold text-[#191A35]">
+              Display currency
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="mt-3 w-full rounded-xl border border-[#E5E6F0] bg-white px-3 py-3 font-normal outline-none focus:border-[#5B4BEE]"
+              >
+                <option value="KSh">Kenyan Shilling (KSh)</option>
+                <option value="USD">US Dollar (USD)</option>
+              </select>
+            </label>
+            <p className="mt-2 text-xs leading-5 text-[#777A94]">
+              This changes the display label only; it does not convert amounts.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#BDE9DD] bg-[#E0F7F3] p-4">
+            <div className="flex items-start gap-3">
+              <ShieldCheck size={22} className="shrink-0 text-[#16A6A1]" />
+              <div>
+                <h3 className="font-bold text-[#126E68]">Your financial privacy matters</h3>
+                <p className="mt-1 text-sm leading-6 text-[#356D69]">
+                  When we build the backend, we will design account access,
+                  secure storage, and careful handling of imported transaction
+                  data. These demo settings do not yet control device
+                  permissions or server-side privacy.
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
+
+
 
 export { Activity, Budgets, Coach, More };
