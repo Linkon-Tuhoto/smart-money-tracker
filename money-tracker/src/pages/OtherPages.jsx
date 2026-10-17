@@ -37,119 +37,411 @@ function PageHeader({ eyebrow, title, description }) {
   );
 }
 
+
 function Activity() {
   const [filter, setFilter] = React.useState("All");
+  const [search, setSearch] = React.useState("");
+  const [showForm, setShowForm] = React.useState(false);
+  const [type, setType] = React.useState("Expense");
+  const [transactions, setTransactions] = React.useState([
+    {
+      id: 1,
+      title: "Groceries",
+      category: "Food",
+      date: "Today · 2:30 PM",
+      amount: 850,
+      type: "Expense",
+      account: "M-Pesa",
+    },
+    {
+      id: 2,
+      title: "Money received",
+      category: "Income",
+      date: "Today · 11:15 AM",
+      amount: 3500,
+      type: "Income",
+      account: "M-Pesa",
+    },
+    {
+      id: 3,
+      title: "Transport",
+      category: "Transport",
+      date: "Yesterday · 5:40 PM",
+      amount: 250,
+      type: "Expense",
+      account: "Cash",
+    },
+    {
+      id: 4,
+      title: "Farm supplies",
+      category: "Farming",
+      date: "Yesterday · 9:20 AM",
+      amount: 1200,
+      type: "Expense",
+      account: "M-Pesa",
+    },
+  ]);
 
-  const records = [
-    { title: "Groceries", category: "Food", date: "Today · 2:30 PM", amount: -850, account: "M-Pesa" },
-    { title: "Money received", category: "Income", date: "Today · 11:15 AM", amount: 3500, account: "M-Pesa" },
-    { title: "Transport", category: "Transport", date: "Yesterday · 5:40 PM", amount: -250, account: "Cash" },
-    { title: "Farm supplies", category: "Farming", date: "Yesterday · 9:20 AM", amount: -1200, account: "M-Pesa" },
-  ];
-
-  const visibleRecords = records.filter((record) => {
-    if (filter === "Income") return record.amount > 0;
-    if (filter === "Expenses") return record.amount < 0;
-    return true;
+  const [form, setForm] = React.useState({
+    title: "",
+    category: "Food",
+    amount: "",
+    account: "M-Pesa",
   });
+
+  const money = (amount) =>
+    new Intl.NumberFormat("en-KE", {
+      style: "currency",
+      currency: "KES",
+      maximumFractionDigits: 0,
+    }).format(amount);
+
+  const income = transactions
+    .filter((item) => item.type === "Income")
+    .reduce((sum, item) => sum + item.amount, 0);
+
+  const expenses = transactions
+    .filter((item) => item.type === "Expense")
+    .reduce((sum, item) => sum + item.amount, 0);
+
+  const visibleTransactions = transactions.filter((item) => {
+    const matchesFilter =
+      filter === "All" || item.type === filter;
+
+    const query = search.trim().toLowerCase();
+
+    const matchesSearch =
+      item.title.toLowerCase().includes(query) ||
+      item.category.toLowerCase().includes(query) ||
+      item.account.toLowerCase().includes(query);
+
+    return matchesFilter && matchesSearch;
+  });
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const amount = Number(form.amount);
+
+    if (!form.title.trim() || !Number.isFinite(amount) || amount <= 0) {
+      return;
+    }
+
+    const newTransaction = {
+      id: Date.now(),
+      title: form.title.trim(),
+      category: form.category,
+      date: "Just now",
+      amount,
+      type,
+      account: form.account,
+    };
+
+    setTransactions((previous) => [
+      newTransaction,
+      ...previous,
+    ]);
+
+    setForm({
+      title: "",
+      category: "Food",
+      amount: "",
+      account: "M-Pesa",
+    });
+
+    setShowForm(false);
+  }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="YOUR MONEY MOVEMENT"
-        title="Activity"
-        description="See the money coming in and going out of your accounts."
-      />
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-sm font-bold text-[#5B4BEE]">
+            YOUR MONEY MOVEMENT
+          </p>
+          <h1 className="mt-2 text-2xl font-extrabold sm:text-3xl">
+            Activity
+          </h1>
+          <p className="mt-2 text-sm text-[#666A85] sm:text-base">
+            Every transaction tells a story. Keep yours organised.
+          </p>
+        </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl bg-white p-4 ring-1 ring-[#E5E6F0]">
-          <ArrowDownLeft className="text-emerald-600" size={23} />
-          <p className="mt-3 text-sm text-[#666A85]">Money received</p>
-          <p className="mt-1 text-xl font-extrabold">{money(3500)}</p>
-        </div>
-        <div className="rounded-2xl bg-white p-4 ring-1 ring-[#E5E6F0]">
-          <ArrowUpRight className="text-[#F47770]" size={23} />
-          <p className="mt-3 text-sm text-[#666A85]">Money spent</p>
-          <p className="mt-1 text-xl font-extrabold">{money(2300)}</p>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="flex flex-1 items-center gap-2 rounded-xl border border-[#E5E6F0] bg-white px-4 py-3">
-          <Search size={19} className="text-[#666A85]" />
-          <input
-            placeholder="Search transactions"
-            className="w-full bg-transparent text-sm outline-none"
-          />
-        </div>
-        <button className="rounded-xl bg-[#5B4BEE] px-4 py-3 text-sm font-bold text-white">
-          <span className="inline-flex items-center gap-2">
-            <Plus size={18} /> Add transaction
-          </span>
+        <button
+          onClick={() => setShowForm((previous) => !previous)}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B4BEE] px-5 py-3 font-bold text-white transition hover:bg-[#4939C7]"
+        >
+          <Plus size={19} />
+          Add transaction
         </button>
       </div>
 
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-[#E5E6F0] bg-white p-5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+            <ArrowDownLeft size={23} />
+          </div>
+          <p className="mt-4 text-sm font-medium text-[#666A85]">
+            Total income
+          </p>
+          <p className="mt-1 text-2xl font-extrabold">
+            {money(income)}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-[#E5E6F0] bg-white p-5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+            <ArrowUpRight size={23} />
+          </div>
+          <p className="mt-4 text-sm font-medium text-[#666A85]">
+            Total expenses
+          </p>
+          <p className="mt-1 text-2xl font-extrabold">
+            {money(expenses)}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-[#E5E6F0] bg-white p-5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEEAFE] text-[#5B4BEE]">
+            <Wallet size={23} />
+          </div>
+          <p className="mt-4 text-sm font-medium text-[#666A85]">
+            Net movement
+          </p>
+          <p className="mt-1 text-2xl font-extrabold">
+            {money(income - expenses)}
+          </p>
+        </div>
+      </div>
+
+      {/* Add transaction form */}
+      {showForm && (
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5 rounded-3xl border border-[#E5E6F0] bg-white p-5 shadow-sm sm:p-6"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-extrabold">
+              Record a transaction
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="rounded-lg px-3 py-2 text-sm font-bold text-[#666A85] hover:bg-[#F7F7FC]"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm font-semibold">
+              Transaction type
+              <select
+                value={type}
+                onChange={(event) => setType(event.target.value)}
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] bg-white p-3 outline-none focus:border-[#5B4BEE]"
+              >
+                <option>Expense</option>
+                <option>Income</option>
+              </select>
+            </label>
+
+            <label className="text-sm font-semibold">
+              Description
+              <input
+                required
+                value={form.title}
+                onChange={(event) =>
+                  setForm({ ...form, title: event.target.value })
+                }
+                placeholder="e.g. Farm labour"
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] p-3 outline-none focus:border-[#5B4BEE]"
+              />
+            </label>
+
+            <label className="text-sm font-semibold">
+              Amount (KSh)
+              <input
+                required
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={form.amount}
+                onChange={(event) =>
+                  setForm({ ...form, amount: event.target.value })
+                }
+                placeholder="e.g. 1500"
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] p-3 outline-none focus:border-[#5B4BEE]"
+              />
+            </label>
+
+            <label className="text-sm font-semibold">
+              Category
+              <select
+                value={form.category}
+                onChange={(event) =>
+                  setForm({ ...form, category: event.target.value })
+                }
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] bg-white p-3 outline-none focus:border-[#5B4BEE]"
+              >
+                <option>Food</option>
+                <option>Transport</option>
+                <option>Shopping</option>
+                <option>Farming</option>
+                <option>Salary</option>
+                <option>Business</option>
+                <option>Tithe & giving</option>
+                <option>Other</option>
+              </select>
+            </label>
+
+            <label className="text-sm font-semibold sm:col-span-2">
+              Account
+              <select
+                value={form.account}
+                onChange={(event) =>
+                  setForm({ ...form, account: event.target.value })
+                }
+                className="mt-2 w-full rounded-xl border border-[#E5E6F0] bg-white p-3 outline-none focus:border-[#5B4BEE]"
+              >
+                <option>M-Pesa</option>
+                <option>Cash</option>
+                <option>Bank</option>
+                <option>Other</option>
+              </select>
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-[#5B4BEE] px-5 py-3 font-bold text-white transition hover:bg-[#4939C7] sm:w-auto"
+          >
+            Save transaction
+          </button>
+        </form>
+      )}
+
+      {/* Search */}
+      <div className="flex items-center gap-3 rounded-xl border border-[#E5E6F0] bg-white px-4 py-3">
+        <Search size={20} className="shrink-0 text-[#666A85]" />
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search by description, category or account..."
+          className="w-full bg-transparent text-sm outline-none"
+        />
+      </div>
+
+      {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        {["All", "Income", "Expenses"].map((item) => (
+        {["All", "Income", "Expense"].map((item) => (
           <button
             key={item}
             onClick={() => setFilter(item)}
-            className={`rounded-xl px-4 py-2 text-sm font-bold ${
+            className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${
               filter === item
                 ? "bg-[#5B4BEE] text-white"
-                : "bg-white text-[#666A85] ring-1 ring-[#E5E6F0]"
+                : "border border-[#E5E6F0] bg-white text-[#666A85] hover:bg-[#EEEAFE]"
             }`}
           >
-            {item}
+            {item === "Expense" ? "Expenses" : item}
           </button>
         ))}
       </div>
 
-      <div className="rounded-3xl border border-[#E5E6F0] bg-white p-5">
-        <h2 className="mb-4 text-lg font-extrabold">Recent records</h2>
-        <div className="divide-y divide-[#F0F0F7]">
-          {visibleRecords.map((record) => (
-            <div
-              key={record.title}
-              className="flex items-center gap-3 py-4 first:pt-0 last:pb-0"
-            >
-              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                record.amount > 0
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-[#EEEAFE] text-[#5B4BEE]"
-              }`}>
-                {record.amount > 0 ? <ArrowDownLeft /> : <ArrowUpRight />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-bold">{record.title}</p>
-                <p className="mt-1 text-xs text-[#666A85]">
-                  {record.category} · {record.account}
-                </p>
-                <p className="mt-1 text-xs text-[#8A8DA5]">{record.date}</p>
-              </div>
-              <p className={`shrink-0 text-sm font-extrabold ${
-                record.amount > 0 ? "text-emerald-600" : "text-[#191A35]"
-              }`}>
-                {record.amount > 0 ? "+" : "−"}
-                {money(Math.abs(record.amount))}
-              </p>
-            </div>
-          ))}
+      {/* Transaction list */}
+      <section className="rounded-3xl border border-[#E5E6F0] bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-extrabold">
+              Transactions
+            </h2>
+            <p className="mt-1 text-sm text-[#666A85]">
+              {visibleTransactions.length} records shown
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div className="rounded-2xl bg-[#EAF3FF] p-4 text-sm leading-6 text-blue-950">
-        <Smartphone className="mb-2" size={22} />
-        <p className="font-bold">M-Pesa message imports</p>
-        <p className="mt-1">
-          We'll add bulk message importing and a transaction review process
-          here. Imported records will need reviewing before being treated as
-          confirmed financial records.
-        </p>
-      </div>
+        {visibleTransactions.length === 0 ? (
+          <div className="py-12 text-center">
+            <Search className="mx-auto text-[#8A8DA5]" size={30} />
+            <p className="mt-3 font-bold">No transactions found</p>
+            <p className="mt-1 text-sm text-[#666A85]">
+              Try another search or filter.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-[#F0F0F7]">
+            {visibleTransactions.map((item) => {
+              const isIncome = item.type === "Income";
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 py-4 first:pt-0 last:pb-0 sm:gap-4"
+                >
+                  <div
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                      isIncome
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-[#EEEAFE] text-[#5B4BEE]"
+                    }`}
+                  >
+                    {isIncome ? (
+                      <ArrowDownLeft size={21} />
+                    ) : (
+                      <ArrowUpRight size={21} />
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-bold">{item.title}</p>
+                    <p className="mt-1 text-xs text-[#666A85]">
+                      {item.category} · {item.account}
+                    </p>
+                    <p className="mt-1 text-xs text-[#8A8DA5]">
+                      {item.date}
+                    </p>
+                  </div>
+
+                  <p
+                    className={`shrink-0 text-sm font-extrabold sm:text-base ${
+                      isIncome ? "text-emerald-600" : "text-[#191A35]"
+                    }`}
+                  >
+                    {isIncome ? "+" : "−"}
+                    {money(item.amount)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* M-Pesa import placeholder */}
+      <section className="rounded-2xl border border-blue-100 bg-[#EAF3FF] p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600">
+            <Smartphone size={23} />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-blue-950">
+              Import M-Pesa messages
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-blue-900">
+              Next, we'll build a bulk-import screen where you can paste
+              multiple messages, review the extracted transactions and
+              describe what each payment was used for.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
+
 
 function Budgets() {
   const budgets = [
