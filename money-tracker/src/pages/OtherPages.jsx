@@ -14,6 +14,7 @@ import {
   Settings,
   Upload,
 } from "lucide-react";
+import React from "react";
 
 const money = (amount) =>
   new Intl.NumberFormat("en-KE", {
