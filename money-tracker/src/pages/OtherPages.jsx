@@ -944,76 +944,296 @@ function Budgets() {
 
 function Coach() {
   const [question, setQuestion] = React.useState("");
+  const [messages, setMessages] = React.useState([
+    {
+      id: 1,
+      role: "coach",
+      text: "Hello! 👋 I'm your Money Coach. I can help you think through your spending habits, budgets and savings goals. What would you like to work on today?",
+    },
+  ]);
+
+  const suggestions = [
+    "Where does most of my money go?",
+    "How can I reduce my spending?",
+    "How can I save more money?",
+    "Help me plan my monthly budget",
+  ];
+
+  function getDemoReply(text) {
+    const value = text.toLowerCase();
+
+    if (value.includes("save")) {
+      return "A useful first step is to set a realistic savings target and review your spending categories. Try choosing an amount you can set aside regularly without neglecting essential expenses. This is a demo suggestion, not an analysis of your actual finances.";
+    }
+
+    if (value.includes("budget") || value.includes("plan")) {
+      return "Start by listing essential expenses, such as food, housing, transport and bills. Set reasonable limits for each category, then leave room for unexpected costs. Once your actual transactions are connected, this coach can help you compare your spending against those limits.";
+    }
+
+    if (value.includes("reduce") || value.includes("spending")) {
+      return "Review your recent purchases and identify expenses you could reduce without affecting your essential needs. Small, consistent changes may help. Your actual spending records will be needed before I can identify which categories offer the best opportunity.";
+    }
+
+    if (value.includes("most") || value.includes("money go")) {
+      return "Your dashboard currently contains sample spending figures. To identify where most of your money goes accurately, we will need to analyse your reviewed transactions and group them by category.";
+    }
+
+    return "That's a good question to explore. A helpful starting point is to review your recorded income, expenses and budget limits. This demo coach does not yet analyse your personal financial records, but we'll connect that functionality later.";
+  }
+
+  function sendMessage(event) {
+    event.preventDefault();
+
+    const text = question.trim();
+
+    if (!text) return;
+
+    const userMessage = {
+      id: Date.now(),
+      role: "user",
+      text,
+    };
+
+    const coachMessage = {
+      id: Date.now() + 1,
+      role: "coach",
+      text: getDemoReply(text),
+    };
+
+    setMessages((previous) => [
+      ...previous,
+      userMessage,
+      coachMessage,
+    ]);
+
+    setQuestion("");
+  }
 
   return (
     <div className="space-y-6">
+      {/* Page heading */}
       <PageHeader
         eyebrow="YOUR FINANCIAL COMPANION"
         title="Money Coach"
-        description="Understand your habits and make more informed money decisions."
+        description="Build healthier money habits, one decision at a time."
       />
 
-      <div className="rounded-3xl bg-gradient-to-br from-[#5B4BEE] to-[#30266F] p-6 text-white sm:p-8">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
-          <Sparkles size={28} />
+      {/* Coach welcome card */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#5B4BEE] via-[#4939C7] to-[#30266F] p-6 text-white shadow-lg shadow-violet-200/50 sm:p-8">
+        <div className="absolute -right-10 -top-12 h-44 w-44 rounded-full border-[26px] border-white/5" />
+        <div className="absolute -bottom-16 right-32 h-36 w-36 rounded-full bg-white/5" />
+
+        <div className="relative">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/20">
+            <Sparkles size={29} />
+          </div>
+
+          <p className="mt-5 text-sm font-bold text-violet-100">
+            YOUR MONEY, YOUR FUTURE
+          </p>
+
+          <h2 className="mt-2 max-w-xl text-2xl font-extrabold leading-tight sm:text-3xl">
+            Make better money decisions with confidence.
+          </h2>
+
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-violet-100 sm:text-base">
+            Explore practical ways to budget, save and understand your
+            financial habits. Your personalised insights will become
+            available when your real transaction data is connected.
+          </p>
         </div>
-        <h2 className="mt-5 text-2xl font-extrabold">Let's improve your money habits.</h2>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-violet-100">
-          Your future coach will use your recorded transactions, budgets and
-          goals to provide personalised insights. For now, this is a visual
-          prototype with sample suggestions.
-        </p>
+      </section>
+
+      {/* Demo notice */}
+      <div className="flex items-start gap-3 rounded-2xl border border-blue-100 bg-[#EAF3FF] p-4">
+        <CircleHelp className="mt-0.5 shrink-0 text-blue-600" size={22} />
+        <div>
+          <p className="font-bold text-blue-950">
+            Interactive demo
+          </p>
+          <p className="mt-1 text-sm leading-6 text-blue-900">
+            Replies below are predefined examples, not AI-generated financial
+            analysis. Your actual account data has not been connected.
+          </p>
+        </div>
       </div>
 
-      <div>
-        <h2 className="mb-3 text-lg font-extrabold">Ideas to explore</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[
-            "Where does most of my money go?",
-            "How can I reduce unnecessary spending?",
-            "Am I staying within my budgets?",
-            "How much could I save this month?",
-          ].map((item) => (
-            <button
-              key={item}
-              onClick={() => setQuestion(item)}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-[#E5E6F0] bg-white p-4 text-left text-sm font-semibold transition hover:border-[#5B4BEE]"
-            >
-              {item}
-              <ChevronRight size={18} className="shrink-0 text-[#5B4BEE]" />
-            </button>
-          ))}
+      {/* Sample insights */}
+      <section>
+        <div className="mb-4">
+          <h2 className="text-xl font-extrabold">Your financial toolkit</h2>
+          <p className="mt-1 text-sm text-[#666A85]">
+            A few areas to focus on as you build good money habits.
+          </p>
         </div>
-      </div>
 
-      <form
-        onSubmit={(event) => event.preventDefault()}
-        className="rounded-3xl border border-[#E5E6F0] bg-white p-5"
-      >
-        <label className="text-sm font-bold" htmlFor="coach-question">
-          Ask your money coach
-        </label>
-        <textarea
-          id="coach-question"
-          value={question}
-          onChange={(event) => setQuestion(event.target.value)}
-          placeholder="e.g. How can I manage my weekly spending?"
-          className="mt-3 min-h-28 w-full resize-y rounded-xl border border-[#E5E6F0] p-4 text-sm outline-none focus:border-[#5B4BEE]"
-        />
-        <button
-          type="submit"
-          className="mt-3 rounded-xl bg-[#5B4BEE] px-5 py-3 text-sm font-bold text-white"
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <article className="rounded-2xl border border-[#E5E6F0] bg-white p-5">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEEAFE] text-[#5B4BEE]">
+              <Wallet size={23} />
+            </span>
+            <h3 className="mt-4 font-extrabold">Understand your spending</h3>
+            <p className="mt-2 text-sm leading-6 text-[#666A85]">
+              Record purchases with useful descriptions so you can see
+              which categories receive the most money.
+            </p>
+          </article>
+
+          <article className="rounded-2xl border border-[#E5E6F0] bg-white p-5">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E5F7F3] text-teal-700">
+              <PiggyBank size={23} />
+            </span>
+            <h3 className="mt-4 font-extrabold">Build your savings</h3>
+            <p className="mt-2 text-sm leading-6 text-[#666A85]">
+              Set achievable goals and monitor your progress as you
+              put money aside.
+            </p>
+          </article>
+
+          <article className="rounded-2xl border border-[#E5E6F0] bg-white p-5">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF0E5] text-orange-600">
+              <ChartNoAxesCombined size={23} />
+            </span>
+            <h3 className="mt-4 font-extrabold">Stay within your budget</h3>
+            <p className="mt-2 text-sm leading-6 text-[#666A85]">
+              Review your category limits regularly and adjust them
+              when your circumstances change.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      {/* Chat interface */}
+      <section className="overflow-hidden rounded-3xl border border-[#E5E6F0] bg-white shadow-sm">
+        <div className="flex items-center gap-3 border-b border-[#E5E6F0] p-5 sm:p-6">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEEAFE] text-[#5B4BEE]">
+            <MessageCircle size={25} />
+          </div>
+
+          <div className="flex-1">
+            <h2 className="font-extrabold">Chat with your coach</h2>
+            <p className="mt-1 text-xs text-[#666A85]">
+              Demo conversation · Sample responses
+            </p>
+          </div>
+
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+        </div>
+
+        {/* Suggested questions */}
+        <div className="border-b border-[#E5E6F0] p-4 sm:p-5">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-[#666A85]">
+            Try asking
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => setQuestion(suggestion)}
+                className="rounded-xl border border-[#E5E6F0] bg-[#F7F7FC] px-3 py-2.5 text-left text-sm font-semibold text-[#30266F] transition hover:border-[#5B4BEE] hover:bg-[#EEEAFE]"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Conversation */}
+        <div
+          aria-live="polite"
+          className="max-h-[480px] min-h-64 space-y-5 overflow-y-auto bg-[#FAFAFE] p-4 sm:p-6"
         >
-          Prepare question
-        </button>
-        <p className="mt-3 text-xs leading-5 text-[#666A85]">
-          No AI response is connected yet. We'll connect the coach after the
-          transaction data and calculations are in place.
-        </p>
-      </form>
+          {messages.map((message) => {
+            const isUser = message.role === "user";
+
+            return (
+              <div
+                key={message.id}
+                className={`flex items-start gap-3 ${
+                  isUser ? "flex-row-reverse" : ""
+                }`}
+              >
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                    isUser
+                      ? "bg-[#EAF3FF] text-blue-700"
+                      : "bg-[#EEEAFE] text-[#5B4BEE]"
+                  }`}
+                >
+                  {isUser ? (
+                    <UserRound size={19} />
+                  ) : (
+                    <Sparkles size={19} />
+                  )}
+                </div>
+
+                <div
+                  className={`max-w-[85%] rounded-2xl p-4 sm:max-w-[78%] ${
+                    isUser
+                      ? "rounded-tr-sm bg-[#5B4BEE] text-white"
+                      : "rounded-tl-sm border border-[#E5E6F0] bg-white text-[#191A35]"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap text-sm leading-6">
+                    {message.text}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Message input */}
+        <form
+          onSubmit={sendMessage}
+          className="border-t border-[#E5E6F0] bg-white p-4 sm:p-5"
+        >
+          <label htmlFor="coach-message" className="sr-only">
+            Your question
+          </label>
+
+          <div className="flex items-end gap-2 rounded-2xl border border-[#E5E6F0] bg-[#F7F7FC] p-2 focus-within:border-[#5B4BEE]">
+            <textarea
+              id="coach-message"
+              rows={2}
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing
+                ) {
+                  event.preventDefault();
+                  event.currentTarget.form.requestSubmit();
+                }
+              }}
+              placeholder="Ask about budgeting, spending or savings..."
+              className="max-h-32 min-h-12 flex-1 resize-y bg-transparent px-2 py-3 text-sm outline-none"
+            />
+
+            <button
+              type="submit"
+              disabled={!question.trim()}
+              aria-label="Send message"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#5B4BEE] text-white transition hover:bg-[#4939C7] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Send size={19} />
+            </button>
+          </div>
+
+          <p className="mt-3 text-xs text-[#8A8DA5]">
+            Press Enter to send, or Shift + Enter for a new line.
+          </p>
+        </form>
+      </section>
     </div>
   );
 }
+
+
 
 function More() {
   const options = [
