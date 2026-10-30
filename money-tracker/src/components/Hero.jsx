@@ -24,48 +24,6 @@ import {
   Tooltip,
 } from "recharts";
 
-const spendingData = [
-  { name: "Food", amount: 4500, color: "#5B4BEE" },
-  { name: "Transport", amount: 2200, color: "#4D8DFA" },
-  { name: "Shopping", amount: 1800, color: "#F47770" },
-  { name: "Other", amount: 1200, color: "#16A6A1" },
-];
-
-const transactions = [
-  {
-    title: "Groceries",
-    category: "Food & groceries",
-    date: "Today, 2:30 PM",
-    amount: -850,
-    icon: ReceiptText,
-    color: "bg-orange-100 text-orange-600",
-  },
-  {
-    title: "Money received",
-    category: "M-Pesa · Income",
-    date: "Today, 11:15 AM",
-    amount: 3500,
-    icon: ArrowDownLeft,
-    color: "bg-emerald-100 text-emerald-600",
-  },
-  {
-    title: "Transport",
-    category: "Travel & transport",
-    date: "Yesterday, 5:40 PM",
-    amount: -250,
-    icon: ArrowUpRight,
-    color: "bg-blue-100 text-blue-600",
-  },
-  {
-    title: "Farm supplies",
-    category: "Business & farming",
-    date: "Yesterday, 9:20 AM",
-    amount: -1200,
-    icon: Wallet,
-    color: "bg-violet-100 text-violet-600",
-  },
-];
-
 const formatMoney = (amount) =>
   new Intl.NumberFormat("en-KE", {
     style: "currency",
@@ -73,13 +31,20 @@ const formatMoney = (amount) =>
     maximumFractionDigits: 0,
   }).format(amount);
 
-function Hero({ onNavigate }) {
+function Hero({ onNavigate, transactions = [], loading = false }) {
   const [showBalance, setShowBalance] = useState(true);
 
-  const totalSpending = spendingData.reduce(
-    (total, item) => total + item.amount,
-    0
-  );
+  const incomeTotal = transactions.filter((item) => item.amount > 0).reduce((total, item) => total + item.amount, 0);
+  const expenseTotal = transactions.filter((item) => item.amount < 0).reduce((total, item) => total + Math.abs(item.amount), 0);
+  const totalBalance = incomeTotal - expenseTotal;
+  const categoryColors = ["#5B4BEE", "#4D8DFA", "#F47770", "#16A6A1", "#A78BFA"];
+  const categoryTotals = transactions.filter((item) => item.amount < 0).reduce((totals, item) => {
+    const category = item.category || "Other";
+    totals[category] = (totals[category] || 0) + Math.abs(item.amount);
+    return totals;
+  }, {});
+  const spendingData = Object.entries(categoryTotals).map(([name, amount], index) => ({ name, amount, color: categoryColors[index % categoryColors.length] }));
+  const totalSpending = spendingData.reduce((total, item) => total + item.amount, 0);
 
   return (
     <div className="min-h-screen bg-[#F7F7FC] pb-6 text-[#191A35]">
@@ -181,7 +146,7 @@ function Hero({ onNavigate }) {
               </div>
 
               <h3 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                {showBalance ? formatMoney(28450) : "KSh ••••••"}
+                {showBalance ? formatMoney(totalBalance) : "KSh ••••••"}
               </h3>
 
               <p className="mt-3 text-sm text-violet-100">
@@ -198,7 +163,7 @@ function Hero({ onNavigate }) {
                   </div>
 
                   <p className="mt-3 text-lg font-bold sm:text-xl">
-                    {showBalance ? formatMoney(18500) : "••••••"}
+                    {showBalance ? formatMoney(incomeTotal) : "••••••"}
                   </p>
 
                   <p className="mt-1 text-xs text-violet-100">
@@ -215,7 +180,7 @@ function Hero({ onNavigate }) {
                   </div>
 
                   <p className="mt-3 text-lg font-bold sm:text-xl">
-                    {showBalance ? formatMoney(9700) : "••••••"}
+                    {showBalance ? formatMoney(expenseTotal) : "••••••"}
                   </p>
 
                   <p className="mt-1 text-xs text-violet-100">
@@ -346,6 +311,7 @@ function Hero({ onNavigate }) {
               </div>
 
               <div className="space-y-4">
+                {spendingData.length === 0 && <p className="text-sm leading-6 text-[#666A85]">No spending data yet. Import your M-Pesa messages to see your real spending breakdown.</p>}
                 {spendingData.map((item) => (
                   <div
                     key={item.name}
@@ -435,9 +401,12 @@ function Hero({ onNavigate }) {
           </div>
 
           <div className="mt-5 divide-y divide-[#F0F0F7]">
-            {transactions.map((transaction) => {
-              const Icon = transaction.icon;
+            {!loading && transactions.length === 0 && <div className="rounded-2xl bg-[#F7F7FC] p-5 text-sm leading-6 text-[#666A85]">Your balance starts at KSh 0.00. Import your M-Pesa messages or add transactions to see your real activity here.</div>}
+            {loading && <p className="py-4 text-sm text-[#666A85]">Loading your transactions…</p>}
+            {transactions.slice(0, 5).map((transaction) => {
               const isIncome = transaction.amount > 0;
+              const Icon = isIncome ? ArrowDownLeft : ReceiptText;
+              const color = isIncome ? "bg-emerald-100 text-emerald-600" : "bg-orange-100 text-orange-600";
 
               return (
                 <div
@@ -445,7 +414,7 @@ function Hero({ onNavigate }) {
                   className="flex items-center gap-3 py-4 first:pt-0 last:pb-0 sm:gap-4"
                 >
                   <span
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${transaction.color}`}
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${color}`}
                   >
                     <Icon size={21} />
                   </span>
