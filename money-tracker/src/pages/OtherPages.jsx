@@ -5,10 +5,18 @@ import {
   Plus,
   ArrowLeft,
   ArrowLeftRight,
+  ArrowDownLeft,
   Upload,
   FileText,
   PiggyBank,
   Settings,
+  ChartNoAxesCombined,
+  Target,
+  Sparkles,
+  MessageCircle,
+  Send,
+  ArrowUpRight,
+  Search,
   ShieldCheck,
   Eye,
   Bell,
@@ -22,6 +30,7 @@ import {
   CircleHelp,
 } from "lucide-react";
 import React from "react";
+import { accountApi, transactionApi, budgetApi } from "../services/api";
 
 const money = (amount) =>
   new Intl.NumberFormat("en-KE", {
@@ -45,49 +54,48 @@ function PageHeader({ eyebrow, title, description }) {
 }
 
 
-function Activity() {
+function Activity({ transactions: sharedTransactions, onRefresh, loading = false }) {
   const [filter, setFilter] = React.useState("All");
   const [search, setSearch] = React.useState("");
   const [showForm, setShowForm] = React.useState(false);
   const [type, setType] = React.useState("Expense");
-  const [transactions, setTransactions] = React.useState([
-    {
-      id: 1,
-      title: "Groceries",
-      category: "Food",
-      date: "Today · 2:30 PM",
-      amount: 850,
-      type: "Expense",
-      account: "M-Pesa",
-    },
-    {
-      id: 2,
-      title: "Money received",
-      category: "Income",
-      date: "Today · 11:15 AM",
-      amount: 3500,
-      type: "Income",
-      account: "M-Pesa",
-    },
-    {
-      id: 3,
-      title: "Transport",
-      category: "Transport",
-      date: "Yesterday · 5:40 PM",
-      amount: 250,
-      type: "Expense",
-      account: "Cash",
-    },
-    {
-      id: 4,
-      title: "Farm supplies",
-      category: "Farming",
-      date: "Yesterday · 9:20 AM",
-      amount: 1200,
-      type: "Expense",
-      account: "M-Pesa",
-    },
-  ]);
+  const [transactions, setTransactions] = React.useState([]);
+  React.useEffect(() => { if (Array.isArray(sharedTransactions)) setTransactions(sharedTransactions); }, [sharedTransactions]);
+  const [loadingTransactions, setLoadingTransactions] = React.useState(true);
+  const [transactionError, setTransactionError] = React.useState("");
+
+  React.useEffect(() => {
+    let active = true;
+    async function load() {
+      setLoadingTransactions(true);
+      setTransactionError("");
+      try {
+        const result = await transactionApi.list({ page: 1, limit: 100 });
+        const rows = result?.transactions || result?.data?.transactions || [];
+        if (active) setTransactions(rows.map((item) => {
+          const rawType = String(item.type || "").toLowerCase();
+          const rawAmount = Number(item.amount ?? (Number(item.amountMinor || 0) / 100));
+          const amount = Math.abs(rawAmount);
+          const dateValue = item.transactionDate || item.createdAt;
+          return {
+            id: item.id || item._id,
+            title: item.description || item.merchant || item.category || "Transaction",
+            category: item.category || "Uncategorised",
+            date: dateValue ? new Date(dateValue).toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" }) : "Date unavailable",
+            amount,
+            type: rawType === "income" ? "Income" : rawType === "expense" ? "Expense" : rawType,
+            account: item.paymentMethod || item.source || "M-Pesa",
+          };
+        }));
+      } catch (error) {
+        if (active) setTransactionError(error.message || "Unable to load transactions.");
+      } finally {
+        if (active) setLoadingTransactions(false);
+      }
+    }
+    load();
+    return () => { active = false; };
+  }, []);
 
   const [form, setForm] = React.useState({
     title: "",
@@ -370,6 +378,8 @@ function Activity() {
           </div>
         </div>
 
+        {transactionError && <p className="mb-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{transactionError}</p>}
+        {(loadingTransactions || loading) && <p className="py-3 text-sm text-[#666A85]">Loading your saved transactions…</p>}
         {visibleTransactions.length === 0 ? (
           <div className="py-12 text-center">
             <Search className="mx-auto text-[#8A8DA5]" size={30} />
@@ -427,20 +437,16 @@ function Activity() {
         )}
       </section>
 
-      {/* M-Pesa import placeholder */}
+      {/* M-Pesa import is available under More → Import M-Pesa messages. */}
       <section className="rounded-2xl border border-blue-100 bg-[#EAF3FF] p-5">
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600">
             <Smartphone size={23} />
           </div>
           <div>
-            <h3 className="font-extrabold text-blue-950">
-              Import M-Pesa messages
-            </h3>
+            <h3 className="font-extrabold text-blue-950">Import M-Pesa messages</h3>
             <p className="mt-1 text-sm leading-6 text-blue-900">
-              Next, we'll build a bulk-import screen where you can paste
-              multiple messages, review the extracted transactions and
-              describe what each payment was used for.
+              Open More → Import M-Pesa messages to import your actual messages. Only successfully saved transactions will appear here.
             </p>
           </div>
         </div>
@@ -451,12 +457,35 @@ function Activity() {
 
 
 function Budgets() {
-  const [budgets, setBudgets] = React.useState([
-    { id: 1, name: "Food & groceries", spent: 4500, limit: 6000, color: "#5B4BEE" },
-    { id: 2, name: "Transport", spent: 2200, limit: 3000, color: "#4D8DFA" },
-    { id: 3, name: "Shopping", spent: 1800, limit: 2000, color: "#F47770" },
-    { id: 4, name: "Farm supplies", spent: 1200, limit: 5000, color: "#16A6A1" },
-  ]);
+  // Start empty and load only budgets saved for the signed-in user.
+  const [budgets, setBudgets] = React.useState([]);
+  const [loadingBudgets, setLoadingBudgets] = React.useState(true);
+  const [budgetError, setBudgetError] = React.useState("");
+
+  const loadBudgets = React.useCallback(async () => {
+    setLoadingBudgets(true);
+    setBudgetError("");
+    try {
+      const result = await budgetApi.list();
+      const rows = result?.budgets || result?.data?.budgets || result?.data || [];
+      const list = Array.isArray(rows) ? rows : [];
+      setBudgets(list.map((item, index) => ({
+        ...item,
+        id: item.id || item._id || `budget-${index}`,
+        name: item.name || item.category || "Budget",
+        limit: Number(item.limit ?? item.amount ?? item.monthlyLimit ?? 0),
+        spent: Number(item.spent ?? item.spentAmount ?? 0),
+        color: item.color || ["#5B4BEE", "#4D8DFA", "#F47770", "#16A6A1"][index % 4],
+      })));
+    } catch (error) {
+      setBudgets([]);
+      setBudgetError(error.message || "Could not load your saved budgets.");
+    } finally {
+      setLoadingBudgets(false);
+    }
+  }, []);
+
+  React.useEffect(() => { loadBudgets(); }, [loadBudgets]);
 
   const [showForm, setShowForm] = React.useState(false);
   const [budgetName, setBudgetName] = React.useState("Food & groceries");
@@ -465,14 +494,9 @@ function Budgets() {
   const [period, setPeriod] = React.useState("Monthly");
   const [message, setMessage] = React.useState("");
 
-  const [goals, setGoals] = React.useState([
-    { id: 1, name: "Emergency fund", target: 20000, saved: 8000 },
-    { id: 2, name: "Farm investment", target: 50000, saved: 12500 },
-  ]);
+  // No sample goals: the backend currently exposes no savings-goal API.
+  const [goals] = React.useState([]);
 
-  const [showGoalForm, setShowGoalForm] = React.useState(false);
-  const [goalName, setGoalName] = React.useState("");
-  const [goalTarget, setGoalTarget] = React.useState("");
 
   const money = (amount) =>
     new Intl.NumberFormat("en-KE", {
@@ -493,12 +517,10 @@ function Budgets() {
 
   const totalRemaining = totalLimit - totalSpent;
 
-  function createBudget(event) {
+  async function createBudget(event) {
     event.preventDefault();
 
-    const name =
-      budgetName === "Other" ? customName.trim() : budgetName;
-
+    const name = budgetName === "Other" ? customName.trim() : budgetName;
     const limit = Number(budgetLimit);
 
     if (!name || !Number.isFinite(limit) || limit <= 0) {
@@ -506,58 +528,24 @@ function Budgets() {
       return;
     }
 
-    if (
-      budgets.some(
-        (budget) => budget.name.toLowerCase() === name.toLowerCase()
-      )
-    ) {
+    if (budgets.some((budget) => budget.name.toLowerCase() === name.toLowerCase())) {
       setMessage("A budget with that category already exists.");
       return;
     }
 
-    const colors = ["#5B4BEE", "#4D8DFA", "#F47770", "#16A6A1"];
-
-    setBudgets((previous) => [
-      ...previous,
-      {
-        id: Date.now(),
-        name,
-        spent: 0,
-        limit,
-        color: colors[previous.length % colors.length],
-      },
-    ]);
-
-    setBudgetLimit("");
-    setCustomName("");
-    setBudgetName("Food & groceries");
-    setMessage(`${name} budget created successfully.`);
-    setShowForm(false);
-  }
-
-  function createGoal(event) {
-    event.preventDefault();
-
-    const target = Number(goalTarget);
-
-    if (!goalName.trim() || !Number.isFinite(target) || target <= 0) {
-      return;
+    try {
+      await budgetApi.create({ category: name, name, limit, period: period.toLowerCase() });
+      await loadBudgets();
+      setBudgetLimit("");
+      setCustomName("");
+      setBudgetName("Food & groceries");
+      setMessage(`${name} budget saved successfully.`);
+      setShowForm(false);
+    } catch (error) {
+      setMessage(error.message || "Could not save this budget to your account.");
     }
-
-    setGoals((previous) => [
-      ...previous,
-      {
-        id: Date.now(),
-        name: goalName.trim(),
-        target,
-        saved: 0,
-      },
-    ]);
-
-    setGoalName("");
-    setGoalTarget("");
-    setShowGoalForm(false);
   }
+
 
   return (
     <div className="space-y-7">
@@ -566,6 +554,8 @@ function Budgets() {
         title="Budgets & savings"
         description="Give every shilling a purpose and work towards your financial goals."
       />
+
+      {budgetError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{budgetError}</p>}
 
       {/* Budget overview */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#5B4BEE] to-[#30266F] p-6 text-white shadow-lg shadow-violet-200/50 sm:p-8">
@@ -746,7 +736,15 @@ function Budgets() {
           </p>
         )}
 
-        {/* Individual budget cards */}
+        {/* Only budgets returned by the backend are displayed. */}
+        {loadingBudgets && <p className="mt-5 text-sm text-[#666A85]">Loading your saved budgets…</p>}
+        {!loadingBudgets && !budgetError && budgets.length === 0 && (
+          <div className="mt-5 rounded-2xl border border-dashed border-[#D8D9E8] bg-white p-8 text-center">
+            <PiggyBank className="mx-auto text-[#8A8DA5]" size={32} />
+            <h3 className="mt-3 font-extrabold">No budgets yet</h3>
+            <p className="mt-1 text-sm text-[#666A85]">Create a budget to start tracking spending. Your totals will update when real transactions are recorded.</p>
+          </div>
+        )}
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           {budgets.map((budget) => {
             const percentage = Math.round(
@@ -833,55 +831,15 @@ function Budgets() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowGoalForm((previous) => !previous)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#E5E6F0] bg-white px-4 py-3 text-sm font-bold text-[#30266F] hover:bg-[#EEEAFE]"
-          >
-            <Plus size={18} />
-            New savings goal
-          </button>
+
         </div>
 
-        {showGoalForm && (
-          <form
-            onSubmit={createGoal}
-            className="mt-4 grid gap-4 rounded-2xl border border-[#E5E6F0] bg-white p-5 sm:grid-cols-2"
-          >
-            <label className="text-sm font-semibold">
-              Goal name
-              <input
-                required
-                value={goalName}
-                onChange={(event) => setGoalName(event.target.value)}
-                placeholder="e.g. Buy a sheep"
-                className="mt-2 w-full rounded-xl border border-[#E5E6F0] p-3 outline-none focus:border-[#5B4BEE]"
-              />
-            </label>
 
-            <label className="text-sm font-semibold">
-              Target amount (KSh)
-              <input
-                required
-                type="number"
-                min="1"
-                step="1"
-                value={goalTarget}
-                onChange={(event) => setGoalTarget(event.target.value)}
-                placeholder="e.g. 15000"
-                className="mt-2 w-full rounded-xl border border-[#E5E6F0] p-3 outline-none focus:border-[#5B4BEE]"
-              />
-            </label>
-
-            <button
-              type="submit"
-              className="rounded-xl bg-[#5B4BEE] px-5 py-3 font-bold text-white sm:col-span-2"
-            >
-              Create savings goal
-            </button>
-          </form>
+        {goals.length === 0 && (
+          <div className="mt-5 rounded-2xl border border-dashed border-[#D8D9E8] bg-white p-6 text-sm leading-6 text-[#666A85]">
+            No savings goals yet. Sample goals have been removed so this section does not show made-up amounts. Persistent savings goals need a backend endpoint before they can be saved safely.
+          </div>
         )}
-
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           {goals.map((goal) => {
             const percentage = Math.round(
@@ -937,9 +895,7 @@ function Budgets() {
               Your plan, your pace
             </h3>
             <p className="mt-1 text-sm leading-6 text-blue-900">
-              Budget alerts and savings progress currently use sample data.
-              Later, we'll calculate them from your actual reviewed
-              transactions and account balances.
+              Budget totals are loaded from your saved budgets. Savings-goal tracking will be enabled once a persistent savings-goal API is available.
             </p>
           </div>
         </div>
@@ -1242,14 +1198,15 @@ function Coach() {
 
 
 
-function More() {
+function More({ onTransactionsImported }) {
   const [section, setSection] = React.useState("menu");
 
-  const [accounts, setAccounts] = React.useState([
-    { name: "M-Pesa", type: "Mobile money", balance: 18450 },
-    { name: "Cash", type: "Cash wallet", balance: 3000 },
-    { name: "Bank account", type: "Bank", balance: 7000 },
-  ]);
+  const [accounts, setAccounts] = React.useState([]);
+  const [accountsLoading, setAccountsLoading] = React.useState(true);
+  const [accountError, setAccountError] = React.useState("");
+  const [totalBalanceFromApi, setTotalBalanceFromApi] = React.useState(0);
+  const [importingMessages, setImportingMessages] = React.useState(false);
+  const [importResult, setImportResult] = React.useState(null);
 
   const [accountName, setAccountName] = React.useState("");
   const [accountType, setAccountType] = React.useState("Cash");
@@ -1273,10 +1230,32 @@ function More() {
   const money = (amount) =>
     `${currency} ${Number(amount).toLocaleString("en-KE")}`;
 
-  const totalBalance = accounts.reduce(
-    (total, account) => total + account.balance,
-    0
-  );
+  const totalBalance = totalBalanceFromApi;
+
+  React.useEffect(() => {
+    let active = true;
+    async function loadAccounts() {
+      setAccountsLoading(true);
+      setAccountError("");
+      try {
+        const result = await accountApi.balances();
+        if (!active) return;
+        const list = result?.accounts || result?.data?.accounts || [];
+        setAccounts(list.map((account) => ({ ...account, balance: Number(account.balance || 0) })));
+        setTotalBalanceFromApi(Number(result?.totalBalance || 0));
+      } catch (error) {
+        if (active) {
+          setAccounts([]);
+          setTotalBalanceFromApi(0);
+          setAccountError(error.message || "Could not load account balances.");
+        }
+      } finally {
+        if (active) setAccountsLoading(false);
+      }
+    }
+    loadAccounts();
+    return () => { active = false; };
+  }, []);
 
   const options = [
     {
@@ -1328,37 +1307,65 @@ function More() {
     setTransferMessage("");
   };
 
-  const addAccount = (event) => {
+  const addAccount = async (event) => {
     event.preventDefault();
-
     const name = accountName.trim();
     if (!name) return;
 
-    const exists = accounts.some(
-      (account) => account.name.toLowerCase() === name.toLowerCase()
-    );
+    const typeMap = {
+      "Mobile money": "mpesa",
+      Cash: "cash",
+      Bank: "bank",
+      Other: "other",
+    };
 
-    if (exists) {
-      alert("An account with that name already exists.");
-      return;
+    try {
+      await accountApi.create({
+        name,
+        type: typeMap[accountType] || "other",
+        openingBalance: 0,
+        currency: "KES",
+      });
+      const result = await accountApi.balances();
+      const list = result?.accounts || [];
+      setAccounts(list.map((account) => ({ ...account, balance: Number(account.balance || 0) })));
+      setTotalBalanceFromApi(Number(result?.totalBalance || 0));
+      setAccountName("");
+      setShowAccountForm(false);
+      setAccountError("");
+    } catch (error) {
+      setAccountError(error.message || "Could not save this account.");
     }
-
-    setAccounts((current) => [
-      ...current,
-      { name, type: accountType, balance: 0 },
-    ]);
-
-    setAccountName("");
-    setShowAccountForm(false);
   };
 
-  const previewMessages = () => {
-    const lines = messages
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
-
+  const previewMessages = async () => {
+    const lines = messages.split("\n").map((line) => line.trim()).filter(Boolean);
+    if (!lines.length) return;
     setImportCount(lines.length);
+    setImportingMessages(true);
+    setImportResult(null);
+    const results = { imported: 0, failed: [] };
+    try {
+      for (const message of lines) {
+        try {
+          await transactionApi.importMpesaMessage(message);
+          results.imported += 1;
+        } catch (error) {
+          results.failed.push({ message: message.slice(0, 90), reason: error.message || "Import failed" });
+        }
+      }
+      setImportResult(results);
+      if (results.imported > 0 && onTransactionsImported) await onTransactionsImported();
+      if (results.imported > 0) {
+        try {
+          const balances = await accountApi.balances();
+          setAccounts((balances?.accounts || []).map((account) => ({ ...account, balance: Number(account.balance || 0) })));
+          setTotalBalanceFromApi(Number(balances?.totalBalance || 0));
+        } catch { /* keep the import result visible even if balances cannot refresh */ }
+      }
+    } finally {
+      setImportingMessages(false);
+    }
   };
 
   const recordTransfer = (event) => {
@@ -1391,22 +1398,8 @@ function More() {
       return;
     }
 
-    setAccounts((current) =>
-      current.map((account) => {
-        if (account.name === transfer.from) {
-          return { ...account, balance: account.balance - amount };
-        }
-
-        if (account.name === transfer.to) {
-          return { ...account, balance: account.balance + amount };
-        }
-
-        return account;
-      })
-    );
-
     setTransferMessage(
-      `Demo transfer of ${money(amount)} recorded between ${transfer.from} and ${transfer.to}.`
+      "Transfers are not connected to the backend yet, so nothing was saved. Your balances have not been changed."
     );
 
     setTransfer({
@@ -1493,7 +1486,7 @@ function More() {
                   {money(totalBalance)}
                 </h2>
                 <p className="mt-2 text-xs text-white/70">
-                  Demo balances · not connected to live accounts
+                  Calculated from your saved accounts and transactions
                 </p>
               </div>
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15">
@@ -1534,18 +1527,21 @@ function More() {
           <SectionHeader title={heading.accounts} />
 
           <div className="mb-5 rounded-2xl bg-[#EEEAFE] p-5">
-            <p className="text-sm font-medium text-[#666A85]">Combined demo balance</p>
+            <p className="text-sm font-medium text-[#666A85]">Combined account balance</p>
             <h3 className="mt-1 text-3xl font-extrabold text-[#30266F]">
               {money(totalBalance)}
             </h3>
           </div>
 
+          {accountError && <p className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{accountError}</p>}
+          {accountsLoading && <p className="py-4 text-sm text-[#666A85]">Loading your account balances…</p>}
+          {!accountsLoading && accounts.length === 0 && <div className="mb-4 rounded-2xl bg-[#F7F7FC] p-5 text-sm leading-6 text-[#666A85]">Your accounts start at KSh 0.00. Once accounts and transactions are saved, their balances will appear here.</div>}
           <div className="space-y-3">
             {accounts.map((account) => {
               const Icon =
-                account.type === "Bank"
+                String(account.type).toLowerCase() === "bank"
                   ? Building2
-                  : account.type === "Mobile money"
+                  : ["mpesa", "mobile money", "mobile_money"].includes(String(account.type).toLowerCase())
                     ? Smartphone
                     : Wallet;
 
@@ -1609,8 +1605,7 @@ function More() {
               </label>
 
               <p className="text-xs leading-5 text-[#777A94]">
-                New accounts start at zero in this prototype. You can add the
-                opening balance feature later.
+                New accounts start at KSh 0.00. Balances are calculated from saved transactions.
               </p>
 
               <button className="w-full rounded-xl bg-[#30266F] px-4 py-3 font-bold text-white">
@@ -1631,9 +1626,7 @@ function More() {
               <div>
                 <h3 className="font-bold text-[#191A35]">Import transaction messages</h3>
                 <p className="mt-1 text-sm leading-6 text-[#666A85]">
-                  Copy messages from your phone and paste them below, one
-                  message per line. You will be able to review extracted
-                  transactions before saving them when the importer is built.
+                  Paste your M-Pesa SMS messages below, one complete message per line. Each message is sent to your secured backend for parsing and saved only if it passes validation.
                 </p>
               </div>
             </div>
@@ -1655,22 +1648,22 @@ function More() {
 
           <button
             onClick={previewMessages}
-            disabled={!messages.trim()}
+            disabled={!messages.trim() || importingMessages}
             className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#5B4BEE] px-4 py-3 font-bold text-white hover:bg-[#4939DB] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Upload size={19} /> Count messages for review
+            <Upload size={19} /> {importingMessages ? "Importing messages…" : "Import and save messages"}
           </button>
 
           {importCount !== null && (
             <div className="mt-4 rounded-2xl border border-[#BDE9DD] bg-[#E0F7F3] p-4">
               <div className="flex items-center gap-2 font-bold text-[#126E68]">
                 <CheckCircle2 size={20} />
-                {importCount} message{importCount === 1 ? "" : "s"} found
+                {importCount} message{importCount === 1 ? "" : "s"} submitted
               </div>
-              <p className="mt-2 text-sm leading-6 text-[#356D69]">
-                This is only a line count. The demo has not extracted,
-                authenticated, or saved any transactions yet.
-              </p>
+              {importResult && <div className="mt-2 text-sm leading-6 text-[#356D69]">
+                Successfully imported: <strong>{importResult.imported}</strong>. Failed or duplicate messages: <strong>{importResult.failed.length}</strong>.
+                {importResult.failed.length > 0 && <ul className="mt-2 list-disc pl-5">{importResult.failed.slice(0, 5).map((item, index) => <li key={`${index}-${item.message}`}>{item.reason}</li>)}</ul>}
+              </div>}
             </div>
           )}
 
@@ -1786,38 +1779,15 @@ function More() {
       {section === "reports" && (
         <>
           <SectionHeader title={heading.reports} />
-
-          <div className="mb-5 rounded-2xl border border-[#E5E6F0] bg-white p-5">
-            <p className="text-sm text-[#777A94]">Sample monthly overview</p>
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <div className="rounded-xl bg-[#E0F7F3] p-4">
-                <TrendingUp size={21} className="text-[#16A6A1]" />
-                <p className="mt-3 text-xs text-[#477B76]">Income</p>
-                <p className="mt-1 text-xl font-extrabold text-[#126E68]">
-                  {money(18500)}
-                </p>
-              </div>
-              <div className="rounded-xl bg-[#FFF0E5] p-4">
-                <TrendingDown size={21} className="text-[#D97735]" />
-                <p className="mt-3 text-xs text-[#966344]">Expenses</p>
-                <p className="mt-1 text-xl font-extrabold text-[#A75224]">
-                  {money(9700)}
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 rounded-xl bg-[#F7F7FC] p-4">
-              <p className="text-sm text-[#777A94]">Difference</p>
-              <p className="mt-1 text-2xl font-extrabold text-[#30266F]">
-                {money(18500 - 9700)}
-              </p>
-              <p className="mt-1 text-xs text-[#777A94]">
-                Sample figures, not calculated from your activity.
-              </p>
-            </div>
+          <div className="mb-5 rounded-2xl border border-dashed border-[#D8D9E8] bg-white p-6 text-center">
+            <FileText size={30} className="mx-auto text-[#8A8DA5]" />
+            <h3 className="mt-3 font-extrabold text-[#191A35]">No report data yet</h3>
+            <p className="mt-2 text-sm leading-6 text-[#666A85]">
+              Reports will appear after you save or import real transactions. No sample income or expense figures are shown here.
+            </p>
           </div>
-
           <div className="rounded-2xl border border-[#E5E6F0] bg-white p-5">
-            <h3 className="font-bold text-[#191A35]">Future reports</h3>
+            <h3 className="font-bold text-[#191A35]">Planned reports</h3>
             <ul className="mt-3 space-y-3 text-sm text-[#666A85]">
               <li>• Spending by category</li>
               <li>• Weekly and monthly comparisons</li>
@@ -1831,59 +1801,16 @@ function More() {
       {section === "goals" && (
         <>
           <SectionHeader title={heading.goals} />
-
           <div className="mb-5 rounded-2xl bg-[#EEEAFE] p-5">
             <PiggyBank size={28} className="text-[#5B4BEE]" />
-            <h3 className="mt-3 text-xl font-extrabold text-[#30266F]">
-              Build towards your goals
-            </h3>
+            <h3 className="mt-3 text-xl font-extrabold text-[#30266F]">Build towards your goals</h3>
             <p className="mt-2 text-sm leading-6 text-[#666A85]">
-              Track how much you have saved and what remains to reach each target.
+              Savings goals will be displayed here once they can be saved to your account. No example goals or made-up balances are shown.
             </p>
           </div>
-
-          {[
-            { name: "Emergency fund", saved: 8000, target: 20000 },
-            { name: "Farm investment", saved: 12500, target: 50000 },
-          ].map((goal) => {
-            const progress = Math.min(
-              100,
-              Math.round((goal.saved / goal.target) * 100)
-            );
-
-            return (
-              <div
-                key={goal.name}
-                className="mb-3 rounded-2xl border border-[#E5E6F0] bg-white p-5"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="font-bold text-[#191A35]">{goal.name}</h3>
-                  <span className="text-sm font-extrabold text-[#5B4BEE]">
-                    {progress}%
-                  </span>
-                </div>
-                <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#EEEAFE]">
-                  <div
-                    className="h-full rounded-full bg-[#5B4BEE]"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <div className="mt-3 flex justify-between gap-3 text-sm">
-                  <span className="font-bold text-[#191A35]">
-                    {money(goal.saved)}
-                  </span>
-                  <span className="text-[#777A94]">
-                    of {money(goal.target)}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-
-          <p className="mt-4 text-xs leading-5 text-[#777A94]">
-            These are demo goals. Your Budgets tab remains the place to manage
-            savings goals in this prototype.
-          </p>
+          <div className="rounded-2xl border border-dashed border-[#D8D9E8] bg-white p-6 text-center text-sm text-[#666A85]">
+            You have no savings goals recorded yet.
+          </div>
         </>
       )}
 
@@ -1932,10 +1859,7 @@ function More() {
               <div>
                 <h3 className="font-bold text-[#126E68]">Your financial privacy matters</h3>
                 <p className="mt-1 text-sm leading-6 text-[#356D69]">
-                  When we build the backend, we will design account access,
-                  secure storage, and careful handling of imported transaction
-                  data. These demo settings do not yet control device
-                  permissions or server-side privacy.
+                  Your requests use the authenticated backend. Never paste your M-Pesa PIN, passwords, or other login credentials. Imported SMS text alone cannot prove that a transaction is genuine.
                 </p>
               </div>
             </div>
